@@ -1,6 +1,76 @@
 # :rocket: clearml-mcp
 
-lightweight MCP server that interacts with the ClearML API
+A lightweight Model Context Protocol (MCP) server that enables AI agents to interact with ClearML experiments, models, and projects.
+
+## Overview
+
+The ClearML MCP server provides 12 comprehensive tools for AI agents to:
+- Discover and analyze ML experiments
+- Compare model performance across tasks
+- Retrieve training metrics and artifacts
+- Search and filter projects and tasks
+- Get comprehensive model context and lineage
+
+## Prerequisites
+
+1. **ClearML Configuration**: You must have a configured `~/clearml.conf` file with your ClearML credentials:
+   ```
+   [api]
+   api_server = https://your-clearml-server.com
+   access_key = your-access-key
+   secret_key = your-secret-key
+   ```
+
+2. **Python 3.10+** and **UV** package manager
+
+## Quick Start
+
+### Install and Run
+
+```bash
+# No installation needed with uvx!
+uvx clearml-mcp
+```
+
+### Claude Desktop Integration
+
+Add to your Claude Desktop configuration file:
+
+**macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
+**Windows**: `%APPDATA%/Claude/claude_desktop_config.json`
+
+```json
+{
+  "mcpServers": {
+    "clearml": {
+      "command": "uvx",
+      "args": ["clearml-mcp"]
+    }
+  }
+}
+```
+
+## Available Tools
+
+### Task Operations
+- `get_task_info` - Get ClearML task details, parameters, and status
+- `list_tasks` - List ClearML tasks with filters
+- `get_task_parameters` - Get task hyperparameters and configuration
+- `get_task_metrics` - Get task training metrics and scalars
+- `get_task_artifacts` - Get task artifacts and outputs
+
+### Model Operations
+- `get_model_info` - Get model metadata and configuration
+- `list_models` - List available models with filtering
+- `get_model_artifacts` - Get model files and download URLs
+
+### Project Operations
+- `list_projects` - List available ClearML projects
+- `get_project_stats` - Get project statistics and task counts
+
+### Analysis Tools
+- `compare_tasks` - Compare multiple tasks by metrics
+- `search_tasks` - Search tasks by name, tags, or description
 
 ## Setup Dev Environment
 
