@@ -19,6 +19,9 @@ classifiers = [
     "Typing :: Typed",
 ]
 dependencies = [
+    "fastmcp>=0.1.0",
+    "clearml>=1.16.0",
+    "pydantic>=2.0.0"
 ]
 
 [dependency-groups]
@@ -34,6 +37,9 @@ dev = [
     "setuptools>=80.9.0",
     "pre-commit>=4.2.0",
 ]
+
+[project.scripts]
+clearml-mcp = "clearml_mcp.clearml_mcp:main"
 
 [project.urls]
 homepage = "https://github.com/prassanna-ravishankar/clearml-mcp"
