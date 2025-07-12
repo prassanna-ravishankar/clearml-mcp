@@ -1,0 +1,13 @@
+{
+  "python.analysis.extraPaths": ["./src/clearml_mcp"],
+  "python.testing.pytestArgs": ["tests"],
+  "python.testing.unittestEnabled": false,
+  "python.testing.pytestEnabled": true,
+  "ruff.configurationPreference": "filesystemFirst",
+  "ruff.configuration": "pyproject.toml",
+
+  // ty settings
+  "ty.experimental.completions.enable": true,
+  "ty.trace.server": "messages",
+  
+}

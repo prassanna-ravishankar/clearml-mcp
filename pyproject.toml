@@ -1,0 +1,119 @@
+
+[project]
+name = "clearml_mcp"
+version = "0.1.0"
+description = "lightweight MCP server that interacts with the ClearML API"
+authors = [{ name = "Prass, The Nomadic Coder", email = "me@prassanna.io" }]
+readme = "README.md"
+license = {file = "LICENSE"}
+keywords = ["python"]
+requires-python = ">=3.10,<4"
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Typing :: Typed",
+]
+dependencies = [
+]
+
+[dependency-groups]
+dev = [
+    "ty>=0.0.1a11",
+    
+    "pytest>=8.4.1",
+    "coverage>=7.8.2",
+    "ruff>=0.12.0",
+    "taskipy>=1.14.1",
+    "portray>=1.8.0",
+    "legacy-cgi>=2.6.3",
+    "setuptools>=80.9.0",
+    "pre-commit>=4.2.0",
+]
+
+[project.urls]
+homepage = "https://github.com/prassanna-ravishankar/clearml-mcp"
+repository = "https://github.com/prassanna-ravishankar/clearml-mcp.git"
+documentation = "https://prassanna-ravishankar.github.io/clearml-mcp"
+issues = "https://github.com/prassanna-ravishankar/clearml-mcp/issues"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/clearml_mcp"]
+
+[tool.taskipy.tasks]
+format = { cmd = "ruff format ./src/", help = "Format code using ruff" }
+lint = { cmd = "ruff check --fix ./src/", help = "Lint code using ruff" }
+type = { cmd = "ty check", help = "Typecheck code using ty" }
+docs = { cmd = "portray in_browser", help = "Serve documentation in browser" }
+serve = { cmd = "portray server", help = "Serve documentation" }
+html = { cmd = "portray as_html", help = "Build HTML documentation" }
+publish = { cmd = "portray on_github_pages", help = "Publish documentation on GitHub Pages" }
+tests = { cmd = "pytest --verbose --color=yes tests", help = "Run all tests using pytest" }
+coverage = { cmd = "coverage run -m pytest tests && coverage report", help = "Generate coverage report" }
+run = { cmd = "uv run ./src/clearml_mcp/clearml_mcp.py", help = "Run main application" }
+
+[tool.ruff]
+line-length = 100
+indent-width = 4
+format.indent-style = "space"
+target-version = "py313"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+pydocstyle.convention = "google"
+fixable = ["ALL"]
+select = ["ALL"]
+ignore = [
+    "FA102", # Flake8-future-annotations
+    "F401", # Disable fix for unused imports
+    "B904", # Allow raising exceptions without from e
+    "PLR0913", # too many arguments
+    "CPY", # Flake8-copyright
+    "T201", # Debugging print statements
+    "ERA", # Eradicate – detects commented-out code
+    "BLE001", # Catch-all exceptions
+    "D100", # missing docstring in public module
+    "D105", # undocumented magic method
+    "D107", # undocumented public init
+    "D203", # incorrect-blank-line-before-class
+    "D205", # line-between-summary-and-description
+    "D212", # multi-line-summary-first-line
+    "D400", # missing-trailing-period
+    "D407", # missing-dashed-underline-after-section
+    "S311", # rand-usage
+    "EM102", # f-string-exception
+    "TRY003", # long-exception-messages
+]
+
+
+[tool.ty]
+src.root = "./src"
+environment.python = "./.venv"
+terminal.output-format = "concise"
+
+[tool.coverage.report]
+skip_empty = true
+show_missing = true
+fail_under = 100
+
+[tool.coverage.run]
+branch = true
+source = ["src"]
+omit = ["_*.py", "__*.py"]
+
+[tool.portray.mkdocs]
+site_name = "clearml-mcp"
+
+[tool.portray.mkdocs.theme]
+name = "material"
+custom_dir = "docs"
+palette = {scheme= "slate", primary="deep purple", accent="purple"}
+
