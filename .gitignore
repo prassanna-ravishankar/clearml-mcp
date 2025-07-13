@@ -5,6 +5,9 @@
 # Mac files
 .DS_Store
 
+# SpecStory folder
+.specstory/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
