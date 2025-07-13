@@ -17,6 +17,11 @@ A lightweight **Model Context Protocol (MCP) server** that enables AI assistants
 - **📦 Artifact Management**: Retrieve model files, datasets, and experiment outputs
 - **🌐 Cross-platform**: Works with all major AI assistants and code editors
 
+## 📋 Requirements
+
+- **uv** ([installation guide](https://docs.astral.sh/uv/getting-started/installation/)) for `uvx` command
+- **ClearML account** with valid API credentials in `~/.clearml/clearml.conf`
+
 ## 🚀 Quick Start
 
 ### Prerequisites
@@ -268,12 +273,6 @@ npx @modelcontextprotocol/inspector uvx clearml-mcp
 - Request specific metrics instead of all metrics
 - Use `compare_tasks` with metric names for focused analysis
 </details>
-
-## 📋 Requirements
-
-- **Python 3.10+**
-- **uv** ([installation guide](https://docs.astral.sh/uv/getting-started/installation/)) or pip
-- **ClearML account** with valid API credentials in `~/.clearml/clearml.conf`
 
 ## 🤝 Contributing
 
