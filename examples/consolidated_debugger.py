@@ -15,6 +15,20 @@ from smolagents import CodeAgent, MCPClient, OpenAIServerModel
 console = Console()
 
 
+# Load environment variables from .env file
+try:
+    from dotenv import load_dotenv
+
+    load_dotenv()
+except ImportError:
+    print("dotenv package not found, skipping.")
+
+# Set up Gemini API key
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
+if not GEMINI_API_KEY:
+    raise ValueError("GEMINI_API_KEY environment variable not set")
+
+
 class ClearMLDemo:
     """Demo class for ClearML MCP integration."""
 
@@ -23,7 +37,7 @@ class ClearMLDemo:
         self.model = OpenAIServerModel(
             model_id="gemini-2.0-flash",
             api_base="https://generativelanguage.googleapis.com/v1beta/openai/",
-            api_key="AIzaSyDAdEToKdFt8SHs25ABz65bx6cedU_zreo",
+            api_key=GEMINI_API_KEY,
             temperature=0.1,
         )
         self.clearml_server_params = StdioServerParameters(
