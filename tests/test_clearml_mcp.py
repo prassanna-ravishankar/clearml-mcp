@@ -136,14 +136,13 @@ class TestTaskListing:
                 task.get_project_name.return_value = "Project A"
                 task.data.created = "2024-01-01T00:00:00Z"
                 return task
-            else:
-                task = Mock()
-                task.id = "task_2"
-                task.name = "Experiment 2"
-                task.status = "running"
-                task.get_project_name.return_value = "Project B"
-                task.data.created = "2024-01-02T00:00:00Z"
-                return task
+            task = Mock()
+            task.id = "task_2"
+            task.name = "Experiment 2"
+            task.status = "running"
+            task.get_project_name.return_value = "Project B"
+            task.data.created = "2024-01-02T00:00:00Z"
+            return task
 
         mock_task.get_task.side_effect = mock_get_task
 
@@ -212,19 +211,18 @@ class TestTaskListing:
         """list_tasks handles failures when retrieving individual tasks."""
         # Arrange: Query succeeds but individual task retrieval fails
         mock_task.query_tasks.return_value = ["task_1", "task_2"]
-        
+
         def mock_get_task(task_id):
             if task_id == "task_1":
                 raise Exception("Task access denied")
-            else:
-                task = Mock()
-                task.id = "task_2"
-                task.name = "Working Task"
-                task.status = "completed"
-                task.get_project_name.return_value = "Project"
-                task.data.created = "2024-01-01T00:00:00Z"
-                task.data.tags = []
-                return task
+            task = Mock()
+            task.id = "task_2"
+            task.name = "Working Task"
+            task.status = "completed"
+            task.get_project_name.return_value = "Project"
+            task.data.created = "2024-01-01T00:00:00Z"
+            task.data.tags = []
+            return task
 
         mock_task.get_task.side_effect = mock_get_task
 
@@ -689,7 +687,7 @@ class TestProjectSearch:
                 task.get_project_name.return_value = "ML Project"
                 task.data.created = "2024-01-01T00:00:00Z"
                 return task
-            elif task_id == "task_2":
+            if task_id == "task_2":
                 task = Mock()
                 task.id = "task_2"
                 task.name = "Validation Experiment"
@@ -697,14 +695,14 @@ class TestProjectSearch:
                 task.get_project_name.return_value = "ML Project"
                 task.data.created = "2024-01-02T00:00:00Z"
                 return task
-            else:  # task_3
-                task = Mock()
-                task.id = "task_3"
-                task.name = "Data Processing"
-                task.status = "completed"
-                task.get_project_name.return_value = "ML Project"
-                task.data.created = "2024-01-03T00:00:00Z"
-                return task
+            # task_3
+            task = Mock()
+            task.id = "task_3"
+            task.name = "Data Processing"
+            task.status = "completed"
+            task.get_project_name.return_value = "ML Project"
+            task.data.created = "2024-01-03T00:00:00Z"
+            return task
 
         mock_task.get_task.side_effect = mock_get_task
 
@@ -726,14 +724,13 @@ class TestProjectSearch:
         def mock_get_task(task_id):
             if task_id == "task_1":
                 raise Exception("Task access denied")
-            else:
-                task = Mock()
-                task.id = "task_2"
-                task.name = "Accessible Experiment"
-                task.status = "completed"
-                task.get_project_name.return_value = "ML Project"
-                task.data.created = "2024-01-02T00:00:00Z"
-                return task
+            task = Mock()
+            task.id = "task_2"
+            task.name = "Accessible Experiment"
+            task.status = "completed"
+            task.get_project_name.return_value = "ML Project"
+            task.data.created = "2024-01-02T00:00:00Z"
+            return task
 
         mock_task.get_task.side_effect = mock_get_task
 
@@ -823,10 +820,26 @@ class TestProjectOperations:
         """get_project_stats returns project statistics correctly."""
         # Arrange: Create mock tasks with different statuses
         tasks = []
-        statuses = ["created", "created", "queued", "in_progress", "in_progress", "in_progress", 
-                   "stopped", "published", "published", "published", "closed", "failed", "failed", 
-                   "completed", "completed", "completed", "completed"]
-        
+        statuses = [
+            "created",
+            "created",
+            "queued",
+            "in_progress",
+            "in_progress",
+            "in_progress",
+            "stopped",
+            "published",
+            "published",
+            "published",
+            "closed",
+            "failed",
+            "failed",
+            "completed",
+            "completed",
+            "completed",
+            "completed",
+        ]
+
         for i, status in enumerate(statuses):
             task = Mock()
             task.status = status
@@ -865,6 +878,7 @@ class TestTaskComparison:
     @patch("clearml_mcp.clearml_mcp.Task")
     async def test_compares_multiple_tasks_with_specific_metrics(self, mock_task):
         """compare_tasks compares specified metrics across tasks."""
+
         # Arrange
         def mock_get_task(task_id):
             task = Mock()
@@ -931,7 +945,7 @@ class TestTaskComparison:
         task.status = "completed"
         task.get_reported_scalars.return_value = {
             "loss": {"train": {"y": []}},  # Empty data
-            "accuracy": {"train": None},   # None data
+            "accuracy": {"train": None},  # None data
         }
 
         mock_task.get_task.return_value = task
@@ -977,16 +991,15 @@ class TestTaskSearch:
                 task.data.tags = ["training", "neural"]
                 task.comment = "Deep learning experiment"
                 return task
-            else:
-                task = Mock()
-                task.id = "task_2"
-                task.name = "Data Preprocessing"
-                task.status = "completed"
-                task.get_project_name.return_value = "ML Project"
-                task.data.created = "2024-01-02T00:00:00Z"
-                task.data.tags = ["preprocessing"]
-                task.comment = "Clean and prepare data"
-                return task
+            task = Mock()
+            task.id = "task_2"
+            task.name = "Data Preprocessing"
+            task.status = "completed"
+            task.get_project_name.return_value = "ML Project"
+            task.data.created = "2024-01-02T00:00:00Z"
+            task.data.tags = ["preprocessing"]
+            task.comment = "Clean and prepare data"
+            return task
 
         mock_task.get_task.side_effect = mock_get_task
 
@@ -1068,16 +1081,15 @@ class TestTaskSearch:
         def mock_get_task(task_id):
             if task_id == "task_1":
                 raise Exception("Task access denied")
-            else:
-                task = Mock()
-                task.id = "task_2"
-                task.name = "Accessible Task"
-                task.status = "completed"
-                task.get_project_name.return_value = "ML Project"
-                task.data.created = "2024-01-02T00:00:00Z"
-                task.data.tags = ["accessible"]
-                task.comment = "This works"
-                return task
+            task = Mock()
+            task.id = "task_2"
+            task.name = "Accessible Task"
+            task.status = "completed"
+            task.get_project_name.return_value = "ML Project"
+            task.data.created = "2024-01-02T00:00:00Z"
+            task.data.tags = ["accessible"]
+            task.comment = "This works"
+            return task
 
         mock_task.get_task.side_effect = mock_get_task
 
@@ -1117,7 +1129,7 @@ class TestTaskSearch:
             task.get_project_name.return_value = "ML Project"
             task.data.created = "2024-01-01T00:00:00Z"
             task.data.tags = None  # No tags
-            task.comment = None   # No comment
+            task.comment = None  # No comment
             return task
 
         mock_task.get_task.side_effect = mock_get_task
@@ -1148,4 +1160,3 @@ class TestMainEntryPoint:
         """Test that __name__ == '__main__' calls main()."""
         # This is covered by importing and running the module
         # The actual line is tested when the module is executed
-        pass

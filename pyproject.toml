@@ -105,6 +105,7 @@ ignore = [
     "UP035", # typing.Dict is deprecated - global consistency
     "RUF013", # PEP 484 prohibits implicit Optional - global consistency
     "W293", # blank line contains whitespace - should be handled by formatter
+    "INP001", # implicit namespace package - we use implicit packages intentionally
     # Docstring formatting - global consistency
     "D203", # incorrect-blank-line-before-class
     "D205", # line-between-summary-and-description
@@ -127,6 +128,7 @@ ignore = [
     "B007", # loop control variable not used within loop body
     "ARG001", # unused function argument (test helpers need to match expected signatures)
     "ARG002", # unused method argument
+    "TRY002", # create your own exception (generic exceptions are fine in tests)
     "D104", # missing docstring in public package
 ]
 
