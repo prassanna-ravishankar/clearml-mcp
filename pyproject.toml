@@ -1,6 +1,6 @@
 
 [project]
-name = "clearml_mcp"
+name = "clearml-mcp"
 version = "0.1.0"
 description = "lightweight MCP server that interacts with the ClearML API"
 authors = [{ name = "Prass, The Nomadic Coder", email = "me@prassanna.io" }]

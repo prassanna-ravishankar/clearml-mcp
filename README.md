@@ -1,6 +1,6 @@
 # ClearML MCP Server
 
-![](https://raw.githubusercontent.com/prassanna-ravishankar/clearml-mcp/main/clearml-mcp.png)
+![ClearML MCP](https://raw.githubusercontent.com/prassanna-ravishankar/clearml-mcp/main/docs/clearml.png)
 
 [![PyPI version](https://badge.fury.io/py/clearml-mcp.svg)](https://badge.fury.io/py/clearml-mcp)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
