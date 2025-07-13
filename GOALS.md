@@ -110,7 +110,7 @@ def initialize_clearml_connection():
         projects = Task.get_projects()
         if not projects:
             raise ValueError("No ClearML projects accessible - check your clearml.conf")
-            
+
     except Exception as e:
         raise RuntimeError(f"Failed to initialize ClearML connection: {str(e)}")
 
@@ -139,7 +139,7 @@ if __name__ == "__main__":
 
 ### **Phase 2: Distribution**
 
-#### **2.1 PyPI Package** 
+#### **2.1 PyPI Package**
 - Package with `hatchling` (already configured)
 - Publish as `clearml-mcp`
 - Enable `uvx clearml-mcp` (no installation needed)
@@ -183,7 +183,7 @@ clearml-task --help  # Should work if clearml.conf is configured
 # api_server = https://your-clearml-server.com
 # access_key = your-access-key
 # secret_key = your-secret-key
-# 
+#
 # This is typically already configured by ClearML users
 ```
 

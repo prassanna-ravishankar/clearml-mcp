@@ -1,42 +1,57 @@
-# :rocket: clearml-mcp
+# ClearML MCP Server
 
-A lightweight Model Context Protocol (MCP) server that enables AI agents to interact with ClearML experiments, models, and projects.
+[![PyPI version](https://badge.fury.io/py/clearml-mcp.svg)](https://badge.fury.io/py/clearml-mcp)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-## Overview
+A lightweight **Model Context Protocol (MCP) server** that enables AI assistants to interact with [ClearML](https://clear.ml) experiments, models, and projects. Get comprehensive ML experiment context and analysis directly in your AI conversations.
 
-The ClearML MCP server provides 12 comprehensive tools for AI agents to:
-- Discover and analyze ML experiments
-- Compare model performance across tasks
-- Retrieve training metrics and artifacts
-- Search and filter projects and tasks
-- Get comprehensive model context and lineage
+## ✨ Features
 
-## Prerequisites
+- **🔍 Experiment Discovery**: Find and analyze ML experiments across projects
+- **📊 Performance Analysis**: Compare model metrics and training progress
+- **📈 Real-time Metrics**: Access training scalars, validation curves, and convergence analysis
+- **🏷️ Smart Search**: Filter tasks by name, tags, status, and custom queries
+- **📦 Artifact Management**: Retrieve model files, datasets, and experiment outputs
+- **🌐 Cross-platform**: Works with all major AI assistants and code editors
 
-1. **ClearML Configuration**: You must have a configured `~/clearml.conf` file with your ClearML credentials:
-   ```
-   [api]
-   api_server = https://your-clearml-server.com
-   access_key = your-access-key
-   secret_key = your-secret-key
-   ```
+## 🚀 Quick Start
 
-2. **Python 3.10+** and **UV** package manager
+### Prerequisites
 
-## Quick Start
+You need a configured ClearML environment with your credentials in `~/.clearml/clearml.conf`:
 
-### Install and Run
+```ini
+[api]
+api_server = https://api.clear.ml
+web_server = https://app.clear.ml
+files_server = https://files.clear.ml
+credentials {
+    "access_key": "your-access-key", 
+    "secret_key": "your-secret-key"
+}
+```
+
+Get your credentials from [ClearML Settings](https://app.clear.ml/settings).
+
+### Installation
 
 ```bash
-# No installation needed with uvx!
+# Install from PyPI
+pip install clearml-mcp
+
+# Or run directly with uvx (no installation needed)
 uvx clearml-mcp
 ```
 
-### Claude Desktop Integration
+## 🔌 Integrations
 
-Add to your Claude Desktop configuration file:
+<details>
+<summary><strong>🤖 Claude Desktop</strong></summary>
 
-**macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
+Add to your Claude Desktop configuration:
+
+**macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`  
 **Windows**: `%APPDATA%/Claude/claude_desktop_config.json`
 
 ```json
@@ -50,149 +65,230 @@ Add to your Claude Desktop configuration file:
 }
 ```
 
-## Available Tools
-
-### Task Operations
-- `get_task_info` - Get ClearML task details, parameters, and status
-- `list_tasks` - List ClearML tasks with filters
-- `get_task_parameters` - Get task hyperparameters and configuration
-- `get_task_metrics` - Get task training metrics and scalars
-- `get_task_artifacts` - Get task artifacts and outputs
-
-### Model Operations
-- `get_model_info` - Get model metadata and configuration
-- `list_models` - List available models with filtering
-- `get_model_artifacts` - Get model files and download URLs
-
-### Project Operations
-- `list_projects` - List available ClearML projects
-- `get_project_stats` - Get project statistics and task counts
-
-### Analysis Tools
-- `compare_tasks` - Compare multiple tasks by metrics
-- `search_tasks` - Search tasks by name, tags, or description
-
-## Setup Dev Environment
-
-Installation is using [UV](https://docs.astral.sh/uv/) to manage everything.
-
-**Step 1**: Create a virtual environment
-
+Alternative with pip installation:
+```json
+{
+  "mcpServers": {
+    "clearml": {
+      "command": "python",
+      "args": ["-m", "clearml_mcp.clearml_mcp"]
+    }
+  }
+}
 ```
-uv venv
+</details>
+
+<details>
+<summary><strong>⚡ Cursor</strong></summary>
+
+Add to your Cursor settings (`Ctrl/Cmd + ,` → Search "MCP"):
+
+```json
+{
+  "mcp.servers": {
+    "clearml": {
+      "command": "uvx",
+      "args": ["clearml-mcp"]
+    }
+  }
+}
 ```
 
-**Step 2**: Activate your new environment
-
+Or add to `.cursorrules` in your project:
 ```
-# on windows
-.venv\Scripts\activate
+When analyzing ML experiments or asking about model performance, use the clearml MCP server to access experiment data, metrics, and artifacts.
+```
+</details>
 
-# on mac / linux
-source .venv/bin/activate
+<details>
+<summary><strong>🔥 Continue</strong></summary>
+
+Add to your Continue configuration (`~/.continue/config.json`):
+
+```json
+{
+  "mcpServers": {
+    "clearml": {
+      "command": "uvx",
+      "args": ["clearml-mcp"]
+    }
+  }
+}
+```
+</details>
+
+<details>
+<summary><strong>🦾 Cody</strong></summary>
+
+Add to your Cody settings:
+
+```json
+{
+  "cody.experimental.mcp": {
+    "servers": {
+      "clearml": {
+        "command": "uvx",
+        "args": ["clearml-mcp"]
+      }
+    }
+  }
+}
+```
+</details>
+
+<details>
+<summary><strong>🧠 Other AI Assistants</strong></summary>
+
+For any MCP-compatible AI assistant, use this configuration:
+
+```json
+{
+  "mcpServers": {
+    "clearml": {
+      "command": "uvx", 
+      "args": ["clearml-mcp"]
+    }
+  }
+}
 ```
 
-**Step 3**: Install all the cool dependencies
+**Compatible with:**
+- Zed Editor
+- OpenHands
+- Roo-Cline
+- Any MCP-enabled application
+</details>
 
-```
+## 🛠️ Available Tools
+
+The ClearML MCP server provides **12 comprehensive tools** for ML experiment analysis:
+
+### 📊 Task Operations
+- `get_task_info` - Get detailed task information, parameters, and status
+- `list_tasks` - List tasks with advanced filtering (project, status, tags, user)
+- `get_task_parameters` - Retrieve hyperparameters and configuration
+- `get_task_metrics` - Access training metrics, scalars, and plots
+- `get_task_artifacts` - Get artifacts, model files, and outputs
+
+### 🤖 Model Operations  
+- `get_model_info` - Get model metadata and configuration details
+- `list_models` - Browse available models with filtering
+- `get_model_artifacts` - Access model files and download URLs
+
+### 📁 Project Operations
+- `list_projects` - Discover available ClearML projects
+- `get_project_stats` - Get project statistics and task summaries
+
+### 🔍 Analysis Tools
+- `compare_tasks` - Compare multiple tasks by specific metrics
+- `search_tasks` - Advanced search by name, tags, comments, and more
+
+## 💡 Usage Examples
+
+Once configured, you can ask your AI assistant questions like:
+
+- *"Show me the latest experiments in the 'computer-vision' project"*
+- *"Compare the accuracy metrics between tasks task-123 and task-456"*
+- *"What are the hyperparameters for the best performing model?"*
+- *"Find all failed experiments from last week"*
+- *"Get the training curves for my latest BERT fine-tuning"*
+
+## 🏗️ Development
+
+### Setup
+
+```bash
+# Clone and setup with UV
+git clone https://github.com/prassanna-ravishankar/clearml-mcp.git
+cd clearml-mcp
 uv sync
+
+# Run locally
+uv run python -m clearml_mcp.clearml_mcp
 ```
 
-## Github Repo Setup
+### Available Commands
 
-To add your new project to its Github repository, firstly make sure you have created a project named **clearml-mcp** on Github.
-Follow these steps to push your new project.
+```bash
+# Run tests with coverage
+uv run task coverage
 
-```
-git remote add origin git@github.com:prassanna-ravishankar/clearml-mcp.git
-git branch -M main
-git push -u origin main
-```
+# Lint and format
+uv run task lint
+uv run task format
 
-## Built-in CLI Commands
+# Type checking  
+uv run task type
 
-We've included a bunch of useful CLI commands for common project tasks using [taskipy](https://github.com/taskipy/taskipy).
-
-```
-# run src/clearml_mcp/clearml_mcp.py
-task run
-
-# run all tests
-task tests
-
-
-
-# run test coverage and generate report
-task coverage
-
-# typechecking with Ty or Mypy
-task type
-
-# ruff linting
-task lint
-
-# format with ruff
-task format
+# Run examples
+uv run task consolidated-debug  # Full ML debugging demo
+uv run task example-simple      # Basic integration
+uv run task find-experiments    # Discover real experiments
 ```
 
-## Docker Setup
+### Testing with MCP Inspector
 
-A Dockerfile optimized to reduce the image size has been included. To get it up and running follow these steps.
-
-**Step 1**: Build your Docker image.
-
-```
-docker build --progress=plain -t "clearml_mcp:Dockerfile" .
+```bash
+# Test the MCP server directly
+npx @modelcontextprotocol/inspector uvx clearml-mcp
 ```
 
-**Step 2**: Run your new image.
+## 🚨 Troubleshooting
 
-```
-docker run --rm clearml_mcp:Dockerfile
-```
+<details>
+<summary><strong>Connection Issues</strong></summary>
 
-## PyPI Deployment
+**"No ClearML projects accessible"**
+- Verify your `~/.clearml/clearml.conf` credentials
+- Test with: `python -c "from clearml import Task; print(Task.get_projects())"`
+- Check network access to your ClearML server
 
-1. Register your project and create an API Token on [PyPI](https://pypi.org/).
-2. Add the API Token to your projects secrets with the name `PYPI_TOKEN`
-3. Create a new release on Github.
-4. Create a new tag in the form `*.*.*`.
+**Module not found errors**
+- Try `bunx clearml-mcp` instead of `uvx clearml-mcp`
+- Or use direct Python: `python -m clearml_mcp.clearml_mcp`
+</details>
 
-## Docs Generation + Publishing
+<details>
+<summary><strong>Performance Issues</strong></summary>
 
-Doc generation is setup to scan everything inside `/src`, files with a prefix `_` will be ignored. Basic doc functions for generating, serving, and publishing can be done through these CLI commands:
+**Large dataset queries**
+- Use filters in `list_tasks` to limit results
+- Specify `project_name` to narrow scope
+- Use `task_status` filters (`completed`, `running`, `failed`)
 
-```
-# generate docs & serve
-task docs
+**Slow metric retrieval**
+- Request specific metrics instead of all metrics
+- Use `compare_tasks` with metric names for focused analysis
+</details>
 
-# serve docs
-task serve
+## 📋 Requirements
 
-# generate static HTML docs (outputs to ./site/)
-task html
+- **Python 3.10+**
+- **ClearML SDK** (automatically installed)
+- **Valid ClearML configuration** with API credentials
+- **UV package manager** (recommended) or pip
 
-# publish docs to Github Pages
-task publish
-```
+## 🤝 Contributing
 
-Note: Your repo must be public or have an upgraded account to deploy docs to Github Pages.
+Contributions welcome! This project uses:
 
-## Dependabot Setup
+- **UV** for dependency management
+- **Ruff** for linting and formatting  
+- **Pytest** for testing with 69% coverage
+- **GitHub Actions** for CI/CD
 
-1. Go to the "Settings -> Advanced Security" tab in your repository.
-2. Under the "Dependabot" section enable the options you want to monitor, we recommend the "Dependabot security updates" at the minimum.
+See our [testing philosophy](.cursor/rules/testing-philosophy.mdc) and [linting approach](.cursor/rules/linting-philosophy.mdc) for development guidelines.
 
-Dependabot is configured to do _weekly_ scans of your dependencies, and pull requests will be prefixed with "DBOT". These settings can be adjusted in the `./.github/dependabot.yml` file.
+## 📄 License
 
-## References
+MIT License - see [LICENSE](LICENSE) for details.
 
-- [Cookiecutter Python Project](https://github.com/wyattferguson/pattern) - A modern cookiecutter template for your next Python project.
+## 🔗 Links
 
-## License
+- **PyPI**: [clearml-mcp](https://pypi.org/project/clearml-mcp/)
+- **ClearML**: [clear.ml](https://clear.ml)
+- **Model Context Protocol**: [MCP Specification](https://modelcontextprotocol.io/)
 
-MIT license
+---
 
-## Contact
-
-Created by [Prass, The Nomadic Coder](https://github.com/prassanna-ravishankar)
+**Created by [Prass, The Nomadic Coder](https://github.com/prassanna-ravishankar)**

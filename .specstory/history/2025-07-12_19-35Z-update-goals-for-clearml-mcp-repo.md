@@ -6,7 +6,7 @@ _**User**_
 
 I've just scaffolded a new repo called clearml-mcp. I've drafted a plan @GOALS.md  of what we need to do. Can you update the the goals based on your best knowledge and  analysis of the scaffold?
 
-@https://modelcontextprotocol.io/quickstart/server 
+@https://modelcontextprotocol.io/quickstart/server
 
 
 ---
@@ -96,12 +96,12 @@ Let me update the GOALS.md file with these improvements.</details></think>
 ```diff
 - ## **Plan: ClearML Model Context Protocol (MCP) Server (Revised)**
 + ## **Plan: ClearML Model Context Protocol (MCP) Server**
-  
+
 - This plan outlines the steps to build a lightweight MCP server that interacts with the ClearML API, allowing for easy self-hosting and integration with external tools like Gemini. It leverages the `FastMCP` library for streamlined tool definition and automatic OpenAPI generation.
 + This plan outlines the steps to build a lightweight MCP server that interacts with the ClearML API, following modern MCP server patterns and enabling integration with Claude Desktop and other MCP clients.
-  
+
   ### **Goals**
-  
+
 - - Provide a standardized MCP endpoint for ClearML model context.
 - - Enable easy self-hosting via Docker.
 - - Demonstrate integration with Gemini as a tool.
@@ -111,16 +111,16 @@ Let me update the GOALS.md file with these improvements.</details></think>
 + - Support stdio transport for direct MCP client communication
 + - Ensure clear documentation for setup and usage
 + - Maintain type safety and modern Python development practices
-  
+
 - ### **Phase 1: Project Setup and Core Development**
 + ### **Phase 1: Project Setup and Core MCP Server**
-  
+
 - ### **1.1 Project Structure**
 + ### **1.1 Project Structure (Current)**
-  
+
 - Create a well-organized directory structure for your project:
 + The project follows modern Python packaging conventions:
-  
+
   ```
 - clearml-mcp-server/
 - ├── app/
@@ -142,20 +142,20 @@ Let me update the GOALS.md file with these improvements.</details></think>
 - ├── README.md               # Comprehensive documentation for self-hosting
 - └── scripts/
 -     └── run_server.sh       # Simple script to run the server (optional, for convenience)
-- 
+-
 + │   └── test_clearml_mcp.py     # Unit tests
 + ├── pyproject.toml              # Modern Python project configuration
 + ├── Dockerfile                  # For containerization
 + ├── README.md                   # Documentation
 + └── docs/                       # Additional documentation
   ```
-  
+
 - ### **1.2 Core MCP Server Logic (`app/main.py`)**
 + ### **1.2 Core MCP Server Implementation (`src/clearml_mcp/clearml_mcp.py`)**
-  
+
 - This file contains the main application logic, defining the MCP tools and their implementation. The full implementation is available in the `clearml-mcp-server-code` immersive.
 + Implement the main MCP server using the FastMCP library:
-  
+
 - - **FastMCP Initialization:** Initialize the `FastMCP` server with a unique name (e.g., `"clearml-mcp"`). This name will be used by MCP clients to refer to your server.
 - - **Pydantic Models:** Define Pydantic `BaseModel` classes for the MCP response structure (`ModelContextResponse`, `AdditionalContext`, etc.). These models automatically generate the OpenAPI schema and provide data validation/serialization.
 - - **MCP Tool Definition:**
@@ -166,7 +166,7 @@ Let me update the GOALS.md file with these improvements.</details></think>
 -         - **Fetch ClearML Data:** Use the `ClearMLClient` instance to make calls to the ClearML API (`models.get_all`, `tasks.get_all`, `storage.get_signed_url`).
 -         - **Error Handling:** Catch potential errors from the `ClearMLClient` (e.g., model not found, API errors) and raise appropriate `ValueError` exceptions. `FastMCP` will handle converting these into standard HTTP error responses.
 -         - **Transform Data:** Map the retrieved ClearML data into an instance of your `ModelContextResponse` Pydantic model. Ensure all required fields are populated and data types are correctly converted (e.g., `datetime.fromisoformat` for dates).
-- 
+-
 - ### **1.3 Configuration Management (`app/config.py`)**
 + - **FastMCP Initialization:** Initialize the MCP server with stdio transport
 + - **ClearML Integration:** Connect to ClearML API using official SDK
@@ -177,11 +177,11 @@ Let me update the GOALS.md file with these improvements.</details></think>
 +   - `list_experiments`: List experiments with search capabilities
 +   - `get_model_artifacts`: Download or get URLs for model artifacts
 +   - `search_projects`: Search and list ClearML projects
-+ 
++
 + ### **1.3 Dependencies (`pyproject.toml`)**
-+ 
++
 + Update the dependencies section to include:
-+ 
++
 + ```toml
 + dependencies = [
 +     "fastmcp>=0.1.0",
@@ -190,12 +190,12 @@ Let me update the GOALS.md file with these improvements.</details></think>
 +     "typing-extensions>=4.0.0"
 + ]
 + ```
-+ 
++
 + ### **1.4 Configuration Management**
-  
+
 - - This module will be responsible for loading all necessary configuration parameters from environment variables (`os.getenv`).
 + Implement configuration loading from environment variables:
-+ 
++
   - **Required Variables:**
 -     - `CLEARML_API_SERVER`: URL of your ClearML API server (e.g., `https://api.clear.ml`).
 -     - `CLEARML_ACCESS_KEY`: Your ClearML API access key.
@@ -203,11 +203,11 @@ Let me update the GOALS.md file with these improvements.</details></think>
 -     - `MCP_SERVER_API_KEY`: A secret API key that MCP clients will use to authenticate with *your* MCP server.
 -     - `PORT`: The port on which your MCP server will listen (e.g., `5000`).
 - - Provide sensible default values where appropriate (e.g., for `CLEARML_API_SERVER`).
-- 
+-
 - ### **1.4 ClearML Client Abstraction (`app/clearml_client.py`)**
-- 
+-
 - This module encapsulates all direct interactions with the ClearML REST API. The full implementation is available in the `clearml-mcp-server-code` immersive.
-- 
+-
 - - **Initialization:** The `ClearMLClient` constructor will retrieve ClearML API credentials (`CLEARML_ACCESS_KEY`, `CLEARML_SECRET_KEY`) and the `CLEARML_API_SERVER` URL from environment variables.
 - - **API Call Helper:** Implement a private helper method (`_call_api`) to handle common aspects of ClearML API requests, including:
 -     - Constructing the full API URL.
@@ -216,182 +216,182 @@ Let me update the GOALS.md file with these improvements.</details></think>
 -     - Checking for HTTP status codes and raising `response.raise_for_status()` for errors.
 -     - Handling `requests.exceptions.HTTPError` (for 4xx/5xx responses) and `requests.exceptions.RequestException` (for network issues).
 - - **Specific ClearML Methods:** Implement public methods for specific ClearML API calls required by your MCP tools, such as `get_model(model_id)`, `get_task(task_id)`, and `get_signed_url(url)`.
-- 
+-
 - ### **Phase 2: Dockerization for Easy Deployment**
-- 
+-
 - This phase ensures your MCP server can be easily packaged and run on any infrastructure supporting Docker.
-- 
+-
 - ### **2.1 `Dockerfile`**
-- 
+-
 - Create a `Dockerfile` to build a portable Docker image of your MCP server.
-- 
+-
 - - **Base Image:** Start with a slim Python image (e.g., `python:3.9-slim-buster`).
 - - **Working Directory:** Set the working directory inside the container (e.g., `/app`).
 - - **Dependencies:** Copy `requirements.txt` and install Python dependencies.
 - - **Application Code:** Copy your `app/` directory into the container.
 - - **Exposed Port:** Expose the port your FastAPI application will run on (e.g., `5000`).
 - - **Startup Command:** Define the command to run your FastAPI application using `uvicorn` (e.g., `CMD ["uvicorn", "app.main:mcp.app", "--host", "0.0.0.0", "--port", "5000"]`).
-- 
+-
 - ### **2.2 `requirements.txt`**
-- 
+-
 - List all Python packages required by your project. The full list is in the `clearml-mcp-server-code` immersive.
-- 
+-
 - - `mcp[cli]`: Installs the Model Context Protocol Python SDK with FastMCP.
 - - `fastapi`: The web framework.
 - - `uvicorn`: The ASGI server to run FastAPI.
 - - `requests`: For synchronous HTTP calls to the ClearML API.
 - - `pydantic`: For data validation and serialization.
-- 
+-
 - ### **2.3 `docker-compose.yml` (Optional, for local testing)**
-- 
+-
 - This file simplifies local development and testing by defining your service and its dependencies.
-- 
+-
 - - **Service Definition:** Define a service for your `clearml-mcp-server`.
 - - **Build Context:** Specify the current directory (`.`) as the build context.
 - - **Port Mapping:** Map a host port to the container's exposed port (e.g., `"5000:5000"`).
 - - **Environment Variables:** Pass environment variables from your `.env` file into the container. **For production, consider Docker Secrets or a dedicated secret management solution instead of directly exposing sensitive keys.**
 - - **Restart Policy:** Set a restart policy (e.g., `restart: unless-stopped`).
-- 
+-
 - ### **Phase 3: Gemini Tool Integration**
-- 
+-
 - This phase focuses on how to make your MCP server discoverable and usable by Gemini.
-- 
+-
 - ### **3.1 OpenAPI Specification**
-- 
+-
 - - **Automatic Generation:** Since you are using FastAPI with `FastMCP`, the OpenAPI specification (`openapi.json`) will be automatically generated and served by your running MCP server at the `/openapi.json` endpoint. Interactive documentation (Swagger UI) will be available at `/docs`.
 - - **Gemini Tool Definition:** When configuring Gemini, you will provide this dynamically generated OpenAPI specification (or a static copy of it) as the tool definition. The `servers` URL in the OpenAPI spec *must* point to the publicly accessible URL of your deployed MCP server.
-- 
+-
 - ### **3.2 Gemini Tool Code Example**
 +   - `CLEARML_API_SERVER`: ClearML API server URL (default: https://api.clear.ml)
 +   - `CLEARML_ACCESS_KEY`: ClearML API access key
 +   - `CLEARML_SECRET_KEY`: ClearML API secret key
 +   - `CLEARML_PROJECT_NAME`: Default project name for operations (optional)
-+ 
++
 + ### **1.5 ClearML Client Integration**
-+ 
++
 + Use the official ClearML SDK for API interactions:
-+ 
++
 + - **Model Operations:** List, get, and search models
 + - **Task/Experiment Operations:** Retrieve task details, metrics, and artifacts
 + - **Project Operations:** List and search projects
 + - **Artifact Handling:** Download model files and retrieve signed URLs
 + - **Error Handling:** Proper exception handling and MCP-compatible error responses
-+ 
++
 + ### **Phase 2: MCP Tools Implementation**
-+ 
++
 + ### **2.1 Model Context Tools**
-+ 
++
 + Implement comprehensive model context retrieval:
-+ 
++
 + - **Model Metadata:** Name, version, tags, description, creation date
 + - **Model Metrics:** Training metrics, validation scores, performance data
 + - **Model Artifacts:** File paths, sizes, download URLs
 + - **Related Tasks:** Associated training tasks and experiments
 + - **Model Lineage:** Parent models, derived models, relationships
-+ 
++
 + ### **2.2 Experiment Tools**
-+ 
++
 + Provide experiment and task management:
-+ 
++
 + - **Task Details:** Configuration, hyperparameters, status, progress
 + - **Metrics and Logs:** Training curves, scalar metrics, debug samples
 + - **Artifacts:** Model checkpoints, output files, plots
 + - **Comparison Tools:** Compare multiple experiments or models
-+ 
++
 + ### **2.3 Project Management Tools**
-+ 
++
 + Enable project-level operations:
-+ 
++
 + - **Project Listing:** Available projects with metadata
 + - **Project Search:** Search by name, tags, or description
 + - **Project Statistics:** Number of tasks, models, storage usage
-+ 
++
 + ### **Phase 3: Claude Desktop Integration**
-+ 
++
 + ### **3.1 MCP Server Configuration**
-+ 
++
 + Create configuration for Claude Desktop integration:
-+ 
++
 + - **Server Registration:** Add server to Claude Desktop config
 + - **Transport Configuration:** Use stdio transport for direct communication
 + - **Authentication:** Secure credential handling
 + - **Tool Discovery:** Enable Claude to discover available tools
-+ 
++
 + ### **3.2 Usage Examples**
-+ 
++
 + Provide clear examples for common use cases:
-+ 
++
 + - **Model Discovery:** "Find all models trained on the MNIST dataset"
 + - **Performance Comparison:** "Compare the accuracy of models trained this week"
 + - **Artifact Retrieval:** "Download the best performing model from project X"
 + - **Experiment Analysis:** "Show me the training curves for experiment Y"
-+ 
++
 + ### **Phase 4: Development and Testing**
-+ 
++
 + ### **4.1 Testing Strategy**
-+ 
++
 + Implement comprehensive testing:
-+ 
++
 + - **Unit Tests:** Test individual MCP tools and ClearML integration
 + - **Integration Tests:** Test full MCP server functionality
 + - **Mock Testing:** Use ClearML API mocks for CI/CD
 + - **Type Safety:** Ensure full type coverage with mypy
-+ 
++
 + ### **4.2 Development Tools**
-+ 
++
 + Leverage existing development setup:
-+ 
++
 + - **Code Formatting:** Use ruff for formatting and linting
 + - **Type Checking:** Use ty for type checking
 + - **Testing:** Use pytest with coverage reporting
 + - **Documentation:** Use portray for documentation generation
-+ 
++
 + ### **Phase 5: Deployment and Distribution**
-+ 
++
 + ### **5.1 Local Installation**
-+ 
++
 + Enable easy local installation:
-+ 
++
 + - **pip install:** Install directly from PyPI
 + - **Development install:** `pip install -e .` for local development
 + - **Virtual environment:** Clear instructions for isolation
-+ 
++
 + ### **5.2 Docker Support**
-  
+
 - Provide a Python example demonstrating how a Gemini application would interact with your MCP server. This example is available in the `gemini-mcp-tool-code` immersive.
-- 
+-
 - - **Gemini Model Configuration:** Initialize a `google.generativeai.GenerativeModel` instance and pass the `clearml_mcp_tool_spec` (your OpenAPI definition) to its `tools` parameter.
 - - **Simulated User Interaction:** Show how a user prompt would lead Gemini to generate a `function_call` for your `getModelContext` tool.
 - - **Tool Execution (Conceptual):** Explain that your application would then execute this `function_call` by making an actual HTTP request to your deployed MCP server.
 - - **Sending Tool Output to Gemini:** Demonstrate how the response from your MCP server (the `tool_output`) is sent back to Gemini using `genai.protos.ToolOutput`.
-- 
+-
 - ### **Phase 4: Documentation and Deployment Instructions**
-- 
+-
 - Comprehensive documentation is key for easy self-hosting.
-- 
+-
 - ### **4.1 `README.md`**
 + Provide containerized deployment:
-+ 
++
 + - **Lightweight Image:** Use Alpine or slim Python base images
 + - **Multi-stage Build:** Optimize image size
 + - **Environment Configuration:** Support for environment variables
 + - **Health Checks:** Container health monitoring
-+ 
++
 + ### **5.3 Claude Desktop Integration Guide**
-+ 
++
 + Provide step-by-step integration instructions:
-+ 
++
 + - **Configuration File:** Update Claude Desktop MCP settings
 + - **Server Command:** Proper command-line arguments
 + - **Credential Setup:** Secure environment variable configuration
 + - **Troubleshooting:** Common issues and solutions
-+ 
++
 + ### **Phase 6: Documentation and Examples**
-+ 
++
 + ### **6.1 Comprehensive Documentation**
-  
+
 - Create a detailed `README.md` file in the project root.
-- 
+-
 - - **Project Overview:** Title, brief description of what the server does, and its benefits.
 - - **Features:** List key functionalities (e.g., ClearML model context, MCP compliance, Dockerized, FastAPI).
 - - **Prerequisites:** Clearly state what users need to have installed (Docker, Python, ClearML API credentials).
@@ -406,64 +406,64 @@ Let me update the GOALS.md file with these improvements.</details></think>
 - - **Gemini Integration Guide:** Provide clear steps on how to integrate the server as a tool in a Gemini application, referencing the provided Python example.
 - - **Troubleshooting:** Common issues and how to resolve them.
 - - **Contributing & License:** Standard sections for open-source projects.
-- 
+-
 - ### **4.2 Deployment Considerations**
-- 
+-
 - Include important notes for deploying the server in a production environment.
-- 
+-
 - - **Production Server:** Reiterate that `uvicorn` is suitable for production.
 - - **Reverse Proxy:** Recommend using a reverse proxy (Nginx, Caddy) for SSL termination, custom domain mapping, and potentially load balancing if scaling.
 - - **Secret Management:** Strongly advise against hardcoding sensitive information. Suggest using robust secret management solutions (e.g., Docker Secrets, Kubernetes Secrets, HashiCorp Vault) in production.
 - - **Monitoring & Logging:** Emphasize the importance of setting up monitoring and centralized logging for the deployed server.
 - - **Scalability:** Discuss considerations for scaling the server horizontally if demand increases.
 + Create detailed documentation:
-+ 
++
 + - **Installation Guide:** Multiple installation methods
 + - **Configuration Reference:** All environment variables and options
 + - **API Documentation:** Generated from code annotations
 + - **Integration Examples:** Real-world usage scenarios
 + - **Troubleshooting Guide:** Common issues and solutions
-+ 
++
 + ### **6.2 Example Workflows**
-+ 
++
 + Provide practical examples:
-+ 
++
 + - **Model Management:** Complete model lifecycle management
 + - **Experiment Tracking:** Advanced experiment analysis
 + - **Team Collaboration:** Multi-user project management
 + - **CI/CD Integration:** Automated model deployment workflows
-+ 
++
 + ### **Phase 7: Advanced Features**
-+ 
++
 + ### **7.1 Performance Optimization**
-+ 
++
 + Implement performance enhancements:
-+ 
++
 + - **Caching:** Cache frequently accessed data
 + - **Async Operations:** Use async/await for I/O operations
 + - **Batch Processing:** Handle multiple requests efficiently
 + - **Resource Management:** Proper cleanup and resource handling
-+ 
++
 + ### **7.2 Security Considerations**
-+ 
++
 + Ensure secure operation:
-+ 
++
 + - **Credential Management:** Secure storage and handling
 + - **Input Validation:** Validate all user inputs
 + - **Rate Limiting:** Prevent API abuse
 + - **Audit Logging:** Track all operations
-+ 
++
 + ### **7.3 Extensibility**
-+ 
++
 + Design for future enhancements:
-+ 
++
 + - **Plugin Architecture:** Support for custom tools
 + - **Configuration Flexibility:** Multiple configuration sources
 + - **API Versioning:** Backwards compatibility
 + - **Hook System:** Pre/post operation hooks
-+ 
++
 + ### **Success Metrics**
-+ 
++
 + - **Functionality:** All planned MCP tools implemented and tested
 + - **Integration:** Successful Claude Desktop integration
 + - **Performance:** Fast response times for common operations
@@ -538,7 +538,7 @@ _**Assistant**_
 From the documentation, I can see that the Task class provides many useful methods for:
 1. Creating and managing tasks/experiments
 2. Getting task information, parameters, artifacts
-3. Querying tasks 
+3. Querying tasks
 4. Managing models, metrics, and artifacts
 5. Task lifecycle management (start, stop, complete, etc.)
 
@@ -566,7 +566,7 @@ For project operations:
 - `get_project_name()` - get project name
 - `get_project_id()` - get project ID
 
-This gives us a much clearer picture of what's available and how to implement each MCP tool. 
+This gives us a much clearer picture of what's available and how to implement each MCP tool.
 
 I'll refine our approach by mapping specific SDK methods to our tool requirements, ensuring we leverage the most relevant ClearML Task API capabilities for precise functionality.</details></think>
 
@@ -628,7 +628,7 @@ Yes, absolutely! The [ClearML Task SDK documentation](https://clear.ml/docs/late
 
 ---
 
-<think><details><summary>Thought Process</summary>Perfect! I've successfully updated the GOALS.md file to leverage the specific ClearML Task SDK methods. The documentation was extremely helpful in understanding exactly what capabilities we have available. 
+<think><details><summary>Thought Process</summary>Perfect! I've successfully updated the GOALS.md file to leverage the specific ClearML Task SDK methods. The documentation was extremely helpful in understanding exactly what capabilities we have available.
 
 The key improvements I made are:
 
@@ -680,7 +680,7 @@ This makes our implementation plan much more robust and gives us a clear roadmap
 
 _**User**_
 
-what about integrating it with smithery? @https://smithery.ai/docs  
+what about integrating it with smithery? @https://smithery.ai/docs
 
 ---
 
@@ -896,25 +896,25 @@ But you're absolutely right about the plan being too big. Let me dramatically si
 
 ```diff
 - ## **Plan: ClearML Model Context Protocol (MCP) Server**
-- 
+-
 - This plan outlines the steps to build a lightweight MCP server that interacts with the ClearML API, following modern MCP server patterns and enabling integration with Claude Desktop and other MCP clients.
 + ## **ClearML MCP Server - Implementation Plan**
-  
+
   ### **Goals**
-- 
+-
 - - Provide a standardized MCP server for ClearML model context and operations
 - - Enable easy integration with Claude Desktop and other MCP clients
 - - Support stdio transport for direct MCP client communication
 - - Deploy to Smithery marketplace for broader AI agent ecosystem access
 - - Ensure clear documentation for setup and usage
 - - Maintain type safety and modern Python development practices
-- 
+-
 - ### **Phase 1: Project Setup and Core MCP Server**
-- 
+-
 - ### **1.1 Project Structure (Current)**
-- 
+-
 - The project follows modern Python packaging conventions:
-- 
+-
 - ```
 - clearml-mcp/
 - ├── src/
@@ -930,11 +930,11 @@ But you're absolutely right about the plan being too big. Let me dramatically si
 - ├── README.md                   # Documentation
 - └── docs/                       # Additional documentation
 - ```
-- 
+-
 - ### **1.2 Core MCP Server Implementation (`src/clearml_mcp/clearml_mcp.py`)**
-- 
+-
 - Implement the main MCP server using the FastMCP library:
-- 
+-
 - - **FastMCP Initialization:** Initialize the MCP server with stdio transport
 - - **ClearML Integration:** Connect to ClearML API using official SDK
 - - **MCP Tools Definition:** Define tools for:
@@ -946,20 +946,20 @@ But you're absolutely right about the plan being too big. Let me dramatically si
 -   - `search_projects`: Use `Task.get_projects()` to search and list ClearML projects
 -   - `get_task_metrics`: Use `Task.get_reported_scalars()` to retrieve training metrics and logs
 -   - `get_task_parameters`: Use `Task.get_parameters_as_dict()` to get hyperparameters and configuration
-- 
+-
 - ### **1.3 Dependencies (`pyproject.toml`)**
-- 
+-
 - Update the dependencies section to include:
-- 
+-
 + - Build a lightweight MCP server for ClearML model context and operations
 + - Support both Claude Desktop (via PyPI) and Smithery marketplace
 + - Provide essential ClearML tools for AI agents
-+ 
++
 + ### **Phase 1: Core MCP Server**
-+ 
++
 + #### **1.1 Project Structure** ✅
 + Already set up with modern Python packaging (`src/clearml_mcp/`, `pyproject.toml`)
-+ 
++
 + #### **1.2 Dependencies**
   ```toml
   dependencies = [
@@ -970,11 +970,11 @@ But you're absolutely right about the plan being too big. Let me dramatically si
 +     "pydantic>=2.0.0"
   ]
   ```
-  
+
 - ### **1.4 Configuration Management**
-- 
+-
 - Implement configuration loading from environment variables for ClearML SDK initialization:
-- 
+-
 - - **Required Variables:**
 -   - `CLEARML_API_SERVER`: ClearML API server URL (default: https://api.clear.ml)
 -   - `CLEARML_ACCESS_KEY`: ClearML API access key
@@ -982,12 +982,12 @@ But you're absolutely right about the plan being too big. Let me dramatically si
 -   - `CLEARML_PROJECT_NAME`: Default project name for operations (optional)
 - - **SDK Initialization:** Use `Task.init()` or `Task.set_credentials()` to authenticate with ClearML
 - - **Connection Testing:** Implement connection validation to ensure proper ClearML API access
-- 
+-
 - ### **1.5 ClearML Client Integration**
-- 
+-
 - Use the official ClearML SDK for API interactions, leveraging the Task class methods:
-- 
-- - **Model Operations:** 
+-
+- - **Model Operations:**
 -   - `Task.get_models()` - Get models associated with tasks
 -   - `Task.get_model_config_dict()`, `Task.get_model_config_text()` - Model configuration
 -   - `Task.get_model_design()` - Model architecture/design
@@ -1006,11 +1006,11 @@ But you're absolutely right about the plan being too big. Let me dramatically si
 -   - `Task.get_registered_artifacts()` - Get artifact registry
 -   - `Task.upload_artifact()` - Upload new artifacts
 - - **Error Handling:** Proper exception handling and MCP-compatible error responses
-- 
+-
 - ### **1.6 Example SDK Usage Patterns**
-- 
+-
 - Key patterns for implementing MCP tools with ClearML Task SDK:
-- 
+-
 + #### **1.3 Core Implementation** (`src/clearml_mcp/clearml_mcp.py`)
   ```python
 - # Get task with full context
@@ -1019,220 +1019,220 @@ But you're absolutely right about the plan being too big. Let me dramatically si
 - metrics = task.get_reported_scalars()
 - artifacts = task.get_artifacts()
 - models = task.get_models()
-- 
+-
 - # Search tasks with filters
 - tasks = Task.query_tasks(
 -     project_name="My Project",
 -     task_name="training_*",
 -     task_status=["completed", "published"]
 - )
-- 
+-
 - # Get project information
 - projects = Task.get_projects()
 - project_tasks = Task.get_tasks(project_name="My Project")
 - ```
-- 
+-
 - ### **Phase 2: MCP Tools Implementation**
-- 
+-
 - ### **2.1 Model Context Tools**
-- 
+-
 - Implement comprehensive model context retrieval using Task SDK methods:
-- 
+-
 - - **Model Metadata:** Use `Task.get_models()` for name, version, tags, description, creation date
 - - **Model Configuration:** Use `Task.get_model_config_dict()` and `Task.get_model_design()` for architecture
 - - **Model Metrics:** Use `Task.get_reported_scalars()` for training metrics, validation scores, performance data
 - - **Model Artifacts:** Use `Task.get_artifacts()` and `Task.get_registered_artifacts()` for file paths, sizes, URLs
 - - **Related Tasks:** Use `Task.get_task()` to get associated training tasks and experiments
 - - **Model Lineage:** Use task queries to find parent models, derived models, and relationships
-- 
+-
 - ### **2.2 Experiment Tools**
-- 
+-
 - Provide experiment and task management using Task SDK methods:
-- 
+-
 - - **Task Details:** Use `Task.get_task()` and `Task.get_status()` for configuration, hyperparameters, status, progress
 - - **Hyperparameters:** Use `Task.get_parameters()` and `Task.get_parameters_as_dict()` for experiment configuration
 - - **Metrics and Logs:** Use `Task.get_reported_scalars()` for training curves, scalar metrics, debug samples
 - - **Artifacts:** Use `Task.get_artifacts()` for model checkpoints, output files, plots
 - - **Comparison Tools:** Use `Task.query_tasks()` to compare multiple experiments or models by metrics
-- 
+-
 - ### **2.3 Project Management Tools**
-- 
+-
 - Enable project-level operations using Task SDK methods:
-- 
+-
 - - **Project Listing:** Use `Task.get_projects()` to get available projects with metadata
 - - **Project Search:** Use `Task.get_projects()` with filters to search by name, tags, or description
 - - **Project Statistics:** Use `Task.query_tasks()` grouped by project to get task counts, model counts, and usage metrics
 - - **Project Tasks:** Use `Task.get_tasks()` with project filters to list all tasks in a project
-- 
+-
 - ### **Phase 3: Client Integration**
-- 
+-
 - ### **3.1 Claude Desktop Integration**
-- 
+-
 - Create configuration for Claude Desktop integration:
-- 
+-
 - - **Server Registration:** Add server to Claude Desktop config
 - - **Transport Configuration:** Use stdio transport for direct communication
 - - **Authentication:** Secure credential handling
 - - **Tool Discovery:** Enable Claude to discover available tools
-- 
+-
 - ### **3.2 Smithery Integration**
-- 
+-
 - Deploy to Smithery marketplace for broader AI agent access:
-- 
+-
 - - **Server Registration:** Submit to Smithery server marketplace
 - - **Unified Authentication:** Use Smithery's managed authentication system
 - - **API Gateway:** Leverage Smithery's unified API endpoint for multiple AI agents
 - - **Marketplace Listing:** Create comprehensive server description and documentation for discovery
 - - **Hosted Deployment:** Use Smithery's hosting platform for managed deployment
-- 
+-
 - ### **3.3 Usage Examples**
-- 
+-
 - Provide clear examples for common use cases:
-- 
+-
 - - **Model Discovery:** "Find all models trained on the MNIST dataset"
 - - **Performance Comparison:** "Compare the accuracy of models trained this week"
 - - **Artifact Retrieval:** "Download the best performing model from project X"
 - - **Experiment Analysis:** "Show me the training curves for experiment Y"
 - - **Multi-Agent Access:** Enable various AI agents to access ClearML data through Smithery gateway
-- 
+-
 - ### **Phase 4: Development and Testing**
-- 
+-
 - ### **4.1 Testing Strategy**
-- 
+-
 - Implement comprehensive testing:
-- 
+-
 - - **Unit Tests:** Test individual MCP tools and ClearML integration
 - - **Integration Tests:** Test full MCP server functionality
 - - **Mock Testing:** Use ClearML API mocks for CI/CD
 - - **Type Safety:** Ensure full type coverage with mypy
-- 
+-
 - ### **4.2 Development Tools**
-- 
+-
 - Leverage existing development setup:
-- 
+-
 - - **Code Formatting:** Use ruff for formatting and linting
 - - **Type Checking:** Use ty for type checking
 - - **Testing:** Use pytest with coverage reporting
 - - **Documentation:** Use portray for documentation generation
-- 
+-
 - ### **Phase 5: Deployment and Distribution**
-- 
+-
 - ### **5.1 Local Installation**
-- 
+-
 - Enable easy local installation:
-- 
+-
 - - **pip install:** Install directly from PyPI
 - - **Development install:** `pip install -e .` for local development
 - - **Virtual environment:** Clear instructions for isolation
-- 
+-
 - ### **5.2 Docker Support**
-- 
+-
 - Provide containerized deployment for multiple deployment targets:
-- 
+-
 - - **Lightweight Image:** Use Alpine or slim Python base images
 - - **Multi-stage Build:** Optimize image size
 - - **Environment Configuration:** Support for environment variables
 - - **Health Checks:** Container health monitoring
 - - **Smithery Compatibility:** Ensure Docker image works with Smithery hosting platform
 - - **Multi-Architecture:** Support for different architectures (x86_64, ARM64)
-- 
+-
 - ### **5.3 Integration Guides**
-- 
+-
 - Provide step-by-step integration instructions for multiple platforms:
-- 
+-
 - #### **Claude Desktop Integration**
 - - **Configuration File:** Update Claude Desktop MCP settings
 - - **Server Command:** Proper command-line arguments
 - - **Credential Setup:** Secure environment variable configuration
 - - **Troubleshooting:** Common issues and solutions
-- 
+-
 - #### **Smithery Deployment**
 - - **Server Submission:** Submit MCP server to Smithery marketplace
 - - **Authentication Setup:** Configure ClearML credentials in Smithery
 - - **Deployment Configuration:** Set up hosted deployment parameters
 - - **Testing:** Verify server functionality through Smithery gateway
 - - **Marketplace Optimization:** Optimize server listing for discoverability
-- 
+-
 - ### **Phase 6: Smithery Marketplace Deployment**
-- 
+-
 - ### **6.1 Server Preparation for Smithery**
-- 
+-
 - Prepare the MCP server for Smithery marketplace deployment:
-- 
+-
 - - **Server Metadata:** Create comprehensive server description, tags, and categories
 - - **Documentation:** Prepare marketplace-ready documentation with examples
 - - **Validation:** Ensure server meets Smithery's requirements and standards
 - - **Testing:** Comprehensive testing of server functionality
 - - **Performance Optimization:** Optimize for Smithery's hosting environment
-- 
+-
 - ### **6.2 Smithery Integration Features**
-- 
+-
 - Leverage Smithery-specific features:
-- 
+-
 - - **Unified Authentication:** Integrate with Smithery's managed authentication system
 - - **API Gateway:** Optimize for Smithery's unified API endpoint
 - - **Auto-scaling:** Design for Smithery's auto-scaling capabilities
 - - **Monitoring:** Integrate with Smithery's monitoring and logging systems
 - - **Multi-tenant Support:** Ensure secure multi-tenant operation
-- 
+-
 - ### **6.3 Marketplace Optimization**
-- 
+-
 - Optimize for discovery and adoption:
-- 
+-
 - - **SEO Optimization:** Optimize server title, description, and tags for search
 - - **Use Case Examples:** Provide comprehensive real-world examples
 - - **Integration Templates:** Create templates for common AI agent integrations
 - - **Performance Metrics:** Showcase server performance and reliability
 - - **Community Engagement:** Respond to user feedback and feature requests
-- 
+-
 - ### **Phase 7: Documentation and Examples**
-- 
+-
 - ### **7.1 Comprehensive Documentation**
-- 
+-
 - Create detailed documentation:
-- 
+-
 - - **Installation Guide:** Multiple installation methods
 - - **Configuration Reference:** All environment variables and options
 - - **API Documentation:** Generated from code annotations
 - - **Integration Examples:** Real-world usage scenarios
 - - **Troubleshooting Guide:** Common issues and solutions
-- 
+-
 - ### **7.2 Example Workflows**
-- 
+-
 - Provide practical examples:
-- 
+-
 - - **Model Management:** Complete model lifecycle management
 - - **Experiment Tracking:** Advanced experiment analysis
 - - **Team Collaboration:** Multi-user project management
 - - **CI/CD Integration:** Automated model deployment workflows
 - - **Smithery Integration:** Examples of using the server through Smithery gateway
 - - **Multi-Agent Workflows:** Demonstrate integration with various AI agents
-- 
+-
 - ### **Phase 8: Advanced Features**
-- 
+-
 - ### **8.1 Performance Optimization**
-- 
+-
 - Implement performance enhancements:
-- 
+-
 - - **Caching:** Cache frequently accessed data
 - - **Async Operations:** Use async/await for I/O operations
 - - **Batch Processing:** Handle multiple requests efficiently
 - - **Resource Management:** Proper cleanup and resource handling
-- 
+-
 - ### **8.2 Security Considerations**
-- 
+-
 - Ensure secure operation:
-- 
+-
 - - **Credential Management:** Secure storage and handling
 - - **Input Validation:** Validate all user inputs
 - - **Rate Limiting:** Prevent API abuse
 - - **Audit Logging:** Track all operations
 - - **Multi-tenant Security:** Secure isolation for Smithery marketplace deployment
-- 
+-
 - ### **8.3 Extensibility**
-- 
+-
 - Design for future enhancements:
-- 
+-
 - - **Plugin Architecture:** Support for custom tools
 - - **Configuration Flexibility:** Multiple configuration sources
 - - **API Versioning:** Backwards compatibility
@@ -1240,43 +1240,43 @@ But you're absolutely right about the plan being too big. Let me dramatically si
 - - **Marketplace Extensions:** Support for Smithery-specific features
 + from fastmcp import FastMCP
 + from clearml import Task
-+ 
++
 + mcp = FastMCP("clearml-mcp")
-+ 
++
 + @mcp.tool()
 + async def get_task_info(task_id: str) -> dict:
 +     """Get ClearML task details, parameters, and metrics"""
 +     # Implementation using Task.get_task()
-+ 
++
 + @mcp.tool()
 + async def list_tasks(project_name: str = None, status: str = None) -> list:
 +     """List ClearML tasks with optional filters"""
 +     # Implementation using Task.query_tasks()
-+ 
++
 + @mcp.tool()
 + async def get_task_metrics(task_id: str) -> dict:
 +     """Get task training metrics and scalars"""
 +     # Implementation using Task.get_reported_scalars()
-+ 
++
 + @mcp.tool()
 + async def list_projects() -> list:
 +     """List available ClearML projects"""
 +     # Implementation using Task.get_projects()
 + ```
-+ 
++
 + #### **1.4 Configuration**
 + Environment variables for ClearML connection:
 + - `CLEARML_ACCESS_KEY`
 + - `CLEARML_SECRET_KEY`
 + - `CLEARML_API_SERVER` (optional)
-+ 
++
 + ### **Phase 2: Distribution**
-+ 
-+ #### **2.1 PyPI Package** 
++
++ #### **2.1 PyPI Package**
 + - Package with `hatchling` (already configured)
 + - Publish as `clearml-mcp`
 + - Enable `pip install clearml-mcp`
-+ 
++
 + #### **2.2 Claude Desktop Integration**
 + ```json
 + {
@@ -1288,25 +1288,25 @@ But you're absolutely right about the plan being too big. Let me dramatically si
 +   }
 + }
 + ```
-+ 
++
 + #### **2.3 Smithery Marketplace**
 + - Submit to Smithery with comprehensive description
 + - Enable broader AI agent ecosystem access
-+ 
++
 + ### **Phase 3: Documentation**
 + - README with installation and setup instructions
 + - Environment variable configuration guide
 + - Claude Desktop integration steps
 + - Smithery marketplace listing
-+ 
++
 + ### **Implementation Priority**
 + 1. **Core MCP tools** (4-5 essential tools)
 + 2. **PyPI packaging** (enable `pip install`)
 + 3. **Claude Desktop integration** (local usage)
 + 4. **Smithery deployment** (marketplace access)
-  
+
   ### **Success Metrics**
-- 
+-
 - - **Functionality:** All planned MCP tools implemented and tested
 - - **Integration:** Successful Claude Desktop integration
 - - **Marketplace Deployment:** Successful deployment to Smithery marketplace
@@ -1320,7 +1320,7 @@ But you're absolutely right about the plan being too big. Let me dramatically si
 + - Successful PyPI publication
 + - Claude Desktop integration works
 + - Smithery marketplace deployment
-+ 
++
 + **Total Scope:** ~200-300 lines of core code, focused on essential ClearML operations that AI agents actually need.
 ```
 
@@ -1372,7 +1372,7 @@ _**User**_
 
 now its too minimal and doesn't have the full details around smithery. thats okay I can always do it later.
 
-Buttttt you reduced scope of the mcp tool, which I dont want. 
+Buttttt you reduced scope of the mcp tool, which I dont want.
 
 ---
 
@@ -1380,7 +1380,7 @@ _**Assistant**_
 
 <think><details><summary>Thought Process</summary>The user is right - I went too far in the simplification. They want:
 1. Keep the comprehensive MCP tools (not just 4-5 basic ones)
-2. Keep the Smithery integration details 
+2. Keep the Smithery integration details
 3. But make it manageable for implementation
 
 I need to find the right balance - comprehensive MCP tools and Smithery details, but organized in a way that's not overwhelming. Let me restore the full scope of MCP tools and Smithery integration while keeping the structure manageable.</details></think>
@@ -1440,7 +1440,7 @@ You're absolutely right! I oversimplified the MCP tools scope, which was the cor
 1. **Comprehensive MCP Tools** (12 tools instead of 4-5)
 2. **Full Smithery Integration** with optimization details
 3. **Organized Structure** that's not overwhelming
-4. **Clear Implementation Priority** 
+4. **Clear Implementation Priority**
 5. **Realistic Scope** (~500-700 lines instead of the minimal 200-300)
 
 This gives the user what they wanted - the full scope of MCP tools and Smithery details, but organized in a way that's implementable.</details></think>
@@ -1796,7 +1796,7 @@ Excellent security question! I've now added comprehensive security consideration
 
 ### **1. Multiple Configuration Sources (Priority Order)**
 1. **Environment Variables** (highest priority) - for CI/CD and explicit configuration
-2. **ClearML Config File** (`~/clearml.conf`) - for local development 
+2. **ClearML Config File** (`~/clearml.conf`) - for local development
 3. **Smithery Managed Credentials** - for marketplace deployment
 
 ### **2. Deployment-Specific Security**
@@ -1829,7 +1829,7 @@ def initialize_clearml_connection():
         if os.getenv('CLEARML_ACCESS_KEY'):
             Task.set_credentials(...)
         # Otherwise, use clearml.conf (local usage)
-        
+
         # Validate connection by testing project access
         projects = Task.get_projects()
         if not projects:
@@ -1864,7 +1864,7 @@ The implementation now properly handles the spectrum from local development (whe
 
 _**User**_
 
-hmm local usage is easier because we can have only one path, i.e clearml.conf 
+hmm local usage is easier because we can have only one path, i.e clearml.conf
 
 Server is tricky, because the the access key and secret will have access to only that api. so if the user wants to call their clearml deployment, they'll need to pass their keys and url
 
@@ -1978,7 +1978,7 @@ Perfect! You're absolutely right. I was overcomplicating the authentication stor
 ## **Implementation becomes:**
 
 **Phase 1:** Build MCP tools that work with standard ClearML SDK configuration
-**Phase 2:** Package for PyPI with `uvx clearml-mcp` support  
+**Phase 2:** Package for PyPI with `uvx clearml-mcp` support
 **Phase 3:** Deploy locally via Claude Desktop (works with existing clearml.conf)
 **Phase 4:** Research Smithery's multi-tenant credential patterns for server deployment
 
@@ -2020,7 +2020,7 @@ Absolutely! You're 100% right. Let's keep it simple and focused. Smithery was ad
 + - Support Claude Desktop integration via `uvx clearml-mcp`
 + - Provide comprehensive ClearML tools for AI agents
 + - Keep it simple: local usage only
-  
+
   ### **Phase 1: Core MCP Server**
 ```
 
@@ -2038,7 +2038,7 @@ Absolutely! You're 100% right. Let's keep it simple and focused. Smithery was ad
       try:
 -         # For local usage: ClearML SDK automatically uses ~/clearml.conf
 -         # For server deployment: Credentials passed via Smithery (TBD)
--         
+-
 +         # Uses existing ~/clearml.conf automatically
           # Validate connection by testing project access
           projects = Task.get_projects()
@@ -2046,9 +2046,9 @@ Absolutely! You're 100% right. Let's keep it simple and focused. Smithery was ad
 
 ```diff
   ```
-  
+
 - #### **1.4 Configuration & Security**
-- 
+-
 - **Local Usage (Claude Desktop):**
 - - **Primary Method:** Use existing `~/clearml.conf` file
 - - **Simple:** Users already have this configured for their ClearML instance
@@ -2056,31 +2056,31 @@ Absolutely! You're 100% right. Let's keep it simple and focused. Smithery was ad
 + - **Simple:** Use existing `~/clearml.conf` file
 + - **Automatic:** ClearML SDK discovers and uses user's existing configuration
   - **Secure:** Credentials stay on user's machine
-- 
+-
 - **Server Deployment (Smithery):**
 - - **Complex:** Each user has different ClearML deployment + credentials
 - - **User-Specific:** Need to handle multiple API servers and credential sets
 - - **Challenge:** How do users securely provide their ClearML credentials?
-- 
+-
 - **Security Considerations:**
 - - **Local:** Use existing ClearML SDK configuration mechanism
 - - **Server:** Multi-tenant credential isolation and validation
 - - **Both:** Input validation, rate limiting, audit logging
-  
+
   #### **1.5 MCP Tools Summary**
 ```
 
 ```diff
   - Search and filter projects and tasks
   - Get comprehensive model context and lineage
-- 
+-
 - **Security Validation in Each Tool:**
 - - **Input Validation:** Sanitize all task_ids, project_names, and query parameters
 - - **Permission Checks:** Verify user has access to requested ClearML resources
 - - **Rate Limiting:** Prevent excessive API calls
 - - **Error Sanitization:** Don't expose sensitive information in error messages
 - - **Audit Logging:** Log all operations for security monitoring
-  
+
   ### **Phase 2: Distribution**
 ```
 
@@ -2090,7 +2090,7 @@ Absolutely! You're 100% right. Let's keep it simple and focused. Smithery was ad
 - - Enable `pip install clearml-mcp`
 - - **Console Script:** Add entry point for `uvx clearml-mcp` support
 + - Enable `uvx clearml-mcp` (no installation needed)
-  
+
   #### **2.2 Claude Desktop Integration**
 - **Option 1: Using uvx (recommended)**
   ```json
@@ -2102,7 +2102,7 @@ Absolutely! You're 100% right. Let's keep it simple and focused. Smithery was ad
   }
 - ```
 - *Benefits: No global installation needed, always uses latest version, uses existing ~/clearml.conf*
-- 
+-
 - **Option 2: After pip install**
 - ```json
 - {
@@ -2114,9 +2114,9 @@ Absolutely! You're 100% right. Let's keep it simple and focused. Smithery was ad
 -   }
 - }
   ```
-  
+
   **Prerequisites:** Users must have `~/clearml.conf` configured for their ClearML instance
-  
+
 - #### **2.3 Smithery Marketplace**
 - - **Server Registration:** Submit to Smithery server marketplace
 - - **Unified Authentication:** Use Smithery's managed authentication system
@@ -2124,16 +2124,16 @@ Absolutely! You're 100% right. Let's keep it simple and focused. Smithery was ad
 - - **Marketplace Listing:** Create comprehensive server description and documentation for discovery
 - - **Hosted Deployment:** Use Smithery's hosting platform for managed deployment
 - - **Multi-tenant Support:** Ensure secure multi-tenant operation
-- 
+-
 - #### **2.4 Security Implementation by Deployment**
-- 
+-
 - **Local Usage (Claude Desktop):**
 - ```bash
 - # Simple: Use existing clearml.conf
 - # Server automatically discovers ~/clearml.conf
 - uvx clearml-mcp
 - ```
-- 
+-
 - **Smithery Deployment (Complex):**
 - - **Problem:** Each user has different ClearML server + credentials
 - - **Challenge:** How do users securely provide their specific:
@@ -2141,17 +2141,17 @@ Absolutely! You're 100% right. Let's keep it simple and focused. Smithery was ad
 -   - `CLEARML_ACCESS_KEY` (their access key)
 -   - `CLEARML_SECRET_KEY` (their secret key)
 - - **Solution:** TBD - Need to research Smithery's credential management patterns
-- - **Requirements:** 
+- - **Requirements:**
 -   - Multi-tenant isolation
 -   - Secure credential storage
 -   - Per-user rate limiting
 -   - Audit logging
-- 
+-
 - ### **Phase 3: Documentation & Deployment**
-- 
+-
 - #### **3.1 Documentation**
 + ### **Phase 3: Documentation**
-+ 
++
 + #### **3.1 Setup Instructions**
   - README with installation and setup instructions
 - - Environment variable configuration guide
@@ -2159,23 +2159,23 @@ Absolutely! You're 100% right. Let's keep it simple and focused. Smithery was ad
 - - Smithery marketplace listing
 + - Prerequisite: existing clearml.conf configuration
 + - Claude Desktop integration steps
-  
+
   #### **3.2 Usage Examples**
   ```bash
 - # Local usage (Claude Desktop) - Simple!
 + # Local usage - Simple!
   # Uses existing ~/clearml.conf automatically
   uvx clearml-mcp
-  
+
 - # Or install first, then run
 - pip install clearml-mcp
 - clearml-mcp
-- 
+-
 - # Verify your clearml.conf is working
 + # Verify your clearml.conf is working first
   clearml-task --help  # Should work if clearml.conf is configured
   ```
-  
+
 - #### **3.3 Local Setup Requirements**
 + #### **3.3 Requirements**
   ```bash
@@ -2184,10 +2184,10 @@ Absolutely! You're 100% right. Let's keep it simple and focused. Smithery was ad
 
 ```diff
   # secret_key = your-secret-key
-  # 
+  #
 - # This is typically already configured by users
 - ```
-- 
+-
 - #### **3.4 Smithery Optimization**
 - - **Server Metadata:** Create comprehensive server description, tags, and categories
 - - **Documentation:** Prepare marketplace-ready documentation with examples
@@ -2196,7 +2196,7 @@ Absolutely! You're 100% right. Let's keep it simple and focused. Smithery was ad
 - - **SEO Optimization:** Optimize server title, description, and tags for search
 + # This is typically already configured by ClearML users
 + ```
-  
+
   ### **Implementation Priority**
   1. **Core MCP tools** (12 comprehensive tools covering tasks, models, projects, and comparison)
 - 2. **PyPI packaging** (enable `pip install clearml-mcp` and `uvx clearml-mcp`)
@@ -2204,7 +2204,7 @@ Absolutely! You're 100% right. Let's keep it simple and focused. Smithery was ad
   3. **Claude Desktop integration** (local usage via uvx, requires ~/clearml.conf)
 - 4. **Smithery deployment** (complex - research credential management first)
 + 4. **Documentation** (setup guide and usage examples)
-  
+
   ### **Success Metrics**
   - Working MCP server with comprehensive ClearML tools (12 tools)
 - - Successful PyPI publication (`pip install clearml-mcp` and `uvx clearml-mcp`)
@@ -2218,9 +2218,9 @@ Absolutely! You're 100% right. Let's keep it simple and focused. Smithery was ad
 + - Claude Desktop integration works seamlessly
 + - Clear documentation and easy setup process
 + - Positive user feedback from ClearML community
-  
+
   **Total Scope:** ~500-700 lines of core code, providing comprehensive ClearML operations for AI agents including task management, model operations, project analytics, and comparison tools.
-+ 
++
 + **Simple Philosophy:** One deployment method, one configuration approach, focused on delivering value to ClearML users who want AI agent access to their experiments.
 ```
 
@@ -2280,4 +2280,3 @@ uvx clearml-mcp
 This approach is much more likely to succeed because it's focused, simple, and leverages what ClearML users already have configured. Great call to simplify! 🚀
 
 ---
-

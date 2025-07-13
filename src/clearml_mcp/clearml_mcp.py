@@ -2,7 +2,7 @@
 
 from typing import Any
 
-from clearml import Task, Model
+from clearml import Model, Task
 from fastmcp import FastMCP
 
 mcp = FastMCP("clearml-mcp")
