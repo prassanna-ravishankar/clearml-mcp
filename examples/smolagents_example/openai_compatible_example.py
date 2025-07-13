@@ -47,9 +47,10 @@ def create_clearml_analysis_agent():
     )
     
     # Configure ClearML MCP server parameters
+    # Use local installation since we haven't published to PyPI yet
     clearml_server_params = StdioServerParameters(
-        command="uvx",
-        args=["clearml-mcp"],
+        command="python",
+        args=["-m", "clearml_mcp.clearml_mcp"],
         env=os.environ  # Pass through environment variables
     )
     
@@ -116,8 +117,7 @@ def demonstrate_clearml_analysis():
             agent = CodeAgent(
                 tools=clearml_tools,
                 model=model,
-                add_base_tools=True,  # Include built-in tools
-                max_iterations=20,    # Allow more iterations for complex analysis
+                add_base_tools=False,  # Only use ClearML tools
                 verbosity_level=1     # Show tool usage
             )
             
@@ -197,8 +197,7 @@ def interactive_mode():
         agent = CodeAgent(
             tools=clearml_tools,
             model=model,
-            add_base_tools=True,
-            max_iterations=15,
+            add_base_tools=False,
             verbosity_level=1
         )
         
@@ -269,7 +268,12 @@ def main():
     console.print()
     
     # Check if user wants demo or interactive mode
-    mode = console.input("[bold]Choose mode - [cyan][d][/cyan]emo or [cyan][i][/cyan]nteractive (default: demo): ").strip().lower()
+    try:
+        mode = console.input("[bold]Choose mode - [cyan][d][/cyan]emo or [cyan][i][/cyan]nteractive (default: demo): ").strip().lower()
+    except (EOFError, KeyboardInterrupt):
+        # Default to demo mode when run non-interactively
+        mode = "d"
+        console.print("[dim]Running in demo mode (non-interactive execution)[/dim]")
     
     try:
         if mode.startswith('i'):

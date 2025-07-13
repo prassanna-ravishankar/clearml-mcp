@@ -72,6 +72,8 @@ coverage = { cmd = "coverage run -m pytest tests && coverage report", help = "Ge
 run = { cmd = "uv run ./src/clearml_mcp/clearml_mcp.py", help = "Run main application" }
 example = { cmd = "uv run --group examples examples/smolagents_example/openai_compatible_example.py", help = "Run smolagents example with Gemini" }
 example-simple = { cmd = "uv run --group examples examples/smolagents_example/simple_example.py", help = "Run simple smolagents example" }
+debug-experiment = { cmd = "uv run --group examples examples/smolagents_example/experiment_debugger.py", help = "Debug a specific ClearML experiment" }
+debug-demo = { cmd = "uv run --group examples examples/smolagents_example/realistic_debugging_demo.py", help = "Demo realistic ML debugging scenarios" }
 
 [tool.ruff]
 line-length = 100
