@@ -1,0 +1,19 @@
+# Requirements for ClearML Analysis Agent with Smolagents
+# 
+# This example demonstrates using smolagents with our ClearML MCP server
+# and Google's Gemini API for intelligent experiment analysis.
+
+# Core dependencies
+smolagents[gemini,mcp]>=1.20.0
+google-generativeai>=0.8.0
+
+# MCP dependencies (may be included with smolagents[mcp])
+mcp>=1.0.0
+
+# Optional: For better error handling and CLI experience
+rich>=10.0.0
+click>=8.0.0
+
+# Development dependencies (optional)
+# pytest>=8.0.0
+# pytest-asyncio>=0.23.0
