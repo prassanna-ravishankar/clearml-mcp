@@ -1,6 +1,6 @@
 # ClearML MCP Server
 
-![](https://raw.githubusercontent.com/prassanna-ravishankar/clearml-mcp/main/clearml-mcp.png)
+![ClearML MCP](https://raw.githubusercontent.com/prassanna-ravishankar/clearml-mcp/main/docs/clearml.png)
 
 [![PyPI version](https://badge.fury.io/py/clearml-mcp.svg)](https://badge.fury.io/py/clearml-mcp)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
@@ -16,6 +16,11 @@ A lightweight **Model Context Protocol (MCP) server** that enables AI assistants
 - **🏷️ Smart Search**: Filter tasks by name, tags, status, and custom queries
 - **📦 Artifact Management**: Retrieve model files, datasets, and experiment outputs
 - **🌐 Cross-platform**: Works with all major AI assistants and code editors
+
+## 📋 Requirements
+
+- **uv** ([installation guide](https://docs.astral.sh/uv/getting-started/installation/)) for `uvx` command
+- **ClearML account** with valid API credentials in `~/.clearml/clearml.conf`
 
 ## 🚀 Quick Start
 
@@ -163,7 +168,7 @@ For any MCP-compatible AI assistant, use this configuration:
 
 ## 🛠️ Available Tools
 
-The ClearML MCP server provides **12 comprehensive tools** for ML experiment analysis:
+The ClearML MCP server provides **14 comprehensive tools** for ML experiment analysis:
 
 ### 📊 Task Operations
 - `get_task_info` - Get detailed task information, parameters, and status
@@ -180,6 +185,8 @@ The ClearML MCP server provides **12 comprehensive tools** for ML experiment ana
 ### 📁 Project Operations
 - `list_projects` - Discover available ClearML projects
 - `get_project_stats` - Get project statistics and task summaries
+- `find_project_by_pattern` - Find projects matching name patterns
+- `find_experiment_in_project` - Find specific experiments within projects
 
 ### 🔍 Analysis Tools
 - `compare_tasks` - Compare multiple tasks by specific metrics
@@ -189,7 +196,7 @@ The ClearML MCP server provides **12 comprehensive tools** for ML experiment ana
 
 ### Demo
 
-[![asciicast](https://asciinema.org/a/KYuFcn2WSNMBUmYfk3uMbLpau.svg)](https://asciinema.org/a/KYuFcn2WSNMBUmYfk3uMbLpau)
+[![asciicast](https://asciinema.org/a/3eUmgiUJGRVYa9uEJXz5oPXFj.svg)](https://asciinema.org/a/3eUmgiUJGRVYa9uEJXz5oPXFj)
 
 Once configured, you can ask your AI assistant questions like:
 
@@ -266,13 +273,6 @@ npx @modelcontextprotocol/inspector uvx clearml-mcp
 - Request specific metrics instead of all metrics
 - Use `compare_tasks` with metric names for focused analysis
 </details>
-
-## 📋 Requirements
-
-- **Python 3.10+**
-- **ClearML SDK** (automatically installed)
-- **Valid ClearML configuration** with API credentials
-- **UV package manager** (recommended) or pip
 
 ## 🤝 Contributing
 
