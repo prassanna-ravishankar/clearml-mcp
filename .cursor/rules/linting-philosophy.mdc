@@ -1,0 +1,60 @@
+---
+description: "linting philosophy and file-level ruff configuration"
+alwaysApply: true
+---
+
+# Linting Philosophy: File-Level Ignores Over Global
+
+## Core Principle
+**Use file-level ignores unless we truly need global ones.** Different file types have different requirements - main source code should have strict linting, while tests and examples need appropriate flexibility.
+
+## Configuration Structure
+Linting rules are configured in [pyproject.toml](mdc:pyproject.toml) `[tool.ruff.lint]` section:
+
+### Global Ignores (11 rules)
+Only **truly global style choices** that apply project-wide:
+- Exception handling style: `TRY003`, `EM101`, `EM102`, `B904`, `TRY300`, `BLE001`
+- Docstring formatting consistency: `D203`, `D205`, `D212`, `D400`, `D407`, `D415`
+- Import/typing consistency: `UP035`, `RUF013`, `COM812`
+- Build/maintenance: `CPY`, `ERA`, `W293`
+
+### File-Level Ignores (per-file-ignores)
+
+#### Test Files (`tests/**/*.py`)
+**11 ignores** for test-specific patterns:
+- `S101` - Assert usage (required in tests)
+- `ANN*` - Type annotations (relaxed for test helpers)
+- `PLR2004` - Magic values (acceptable in test data)
+- `SIM103`, `B007`, `ARG*` - Test helper patterns
+
+#### Example Files (`examples/**/*.py`)
+**17 ignores** for demo code flexibility:
+- `T201` - Print statements (examples need output)
+- `E402`, `E501` - Import placement, line length (demo flexibility)
+- `F401` - Unused imports (examples may import for demonstration)
+- `ANN*`, `D*` - Relaxed typing and documentation
+- `BLE001` - Broad exception handling (simplified examples)
+
+#### Main Source (`src/clearml_mcp/clearml_mcp.py`)
+**4 specific ignores** for legitimate architectural needs:
+- `C901` - Complex function (compare_tasks function)
+- `PERF401`, `C401` - Performance patterns (specific instances)
+- `PLR0913` - Argument count (specific functions)
+
+## Benefits
+✅ **Strict main code**: Source files enforce high quality standards  
+✅ **Appropriate flexibility**: Tests and examples have relaxed rules where needed  
+✅ **Clear rationale**: Each ignore is documented with specific reasoning  
+✅ **Maintainable**: File-specific concerns handled at file level, not globally
+
+## Verification
+```bash
+# All files pass with appropriate rules
+ruff check src/ tests/ examples/
+# Pre-commit hooks work
+pre-commit run --all-files
+# CI workflows use GitHub format
+ruff check --output-format=github src/ tests/ examples/
+```
+
+This approach ensures code quality without over-restricting different file types that serve different purposes.

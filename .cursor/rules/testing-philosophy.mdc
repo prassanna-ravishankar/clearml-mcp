@@ -1,0 +1,43 @@
+---
+description: "testing philosophy and behavioral testing approach"
+globs: "tests/**/*.py"
+---
+
+# Testing Philosophy: Behavioral/Black-Box Testing
+
+## Core Principle
+This project uses **behavioral (black-box) testing** instead of white-box testing. Tests focus on **public API behavior** and **expected outcomes**, not internal implementation details.
+
+## Testing Approach
+
+### ✅ DO: Test Public API Behavior
+- Test all public functions and their expected behaviors
+- Focus on input/output relationships
+- Test error conditions and edge cases
+- Verify the complete user-facing contract
+- Test with realistic data scenarios
+
+### ❌ DON'T: Test Internal Implementation
+- Avoid testing private methods directly  
+- Don't test internal data structures
+- Don't mock internal implementation details
+- Don't test "how" the code works, test "what" it does
+
+## Coverage Standards
+- **Target**: 65%+ coverage ([pyproject.toml](mdc:pyproject.toml) `fail_under = 65`)
+- **Current**: 69% coverage achieved through comprehensive behavioral tests
+- Coverage should come from testing **all public API paths**, not from testing internals
+
+## Test Structure
+Tests are organized in [tests/test_clearml_mcp.py](mdc:tests/test_clearml_mcp.py) with:
+- Comprehensive mocking of external dependencies (ClearML API)
+- Behavioral verification of all public functions
+- Edge case and error condition testing
+- Real-world usage scenario simulation
+
+## Key Testing Files
+- Main test suite: [tests/test_clearml_mcp.py](mdc:tests/test_clearml_mcp.py)
+- Coverage configuration: [pyproject.toml](mdc:pyproject.toml) `[tool.coverage.*]`
+- CI testing: [.github/workflows/ci.yml](mdc:.github/workflows/ci.yml)
+
+This approach ensures tests remain stable when refactoring internal implementations while maintaining comprehensive verification of the public API contract.

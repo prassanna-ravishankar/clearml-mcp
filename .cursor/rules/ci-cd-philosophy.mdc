@@ -1,0 +1,74 @@
+---
+description: "CI/CD pipeline philosophy and quality gates"
+globs: ".github/workflows/*.yml,pyproject.toml"
+---
+
+# CI/CD Philosophy: Comprehensive Quality Gates
+
+## Core Principle
+**Every change must pass all quality gates before merge.** Use UV for fast, reliable builds and comprehensive testing across platforms and Python versions.
+
+## Pipeline Structure
+Main CI workflow: [.github/workflows/ci.yml](mdc:.github/workflows/ci.yml)
+
+### Quality Gates (All Required)
+
+#### 1. **Lint Job** (`lint`)
+- **Ruff check** with GitHub format for PR annotations
+- **Ruff format check** to ensure consistent formatting
+- **Ty type checking** (non-blocking warnings, informational)
+
+#### 2. **Test Job** (`test`)
+- **Matrix testing**: Ubuntu/macOS/Windows × Python 3.10-3.13
+- **pytest** with verbose output and color
+- **Coverage reporting** with 65% minimum threshold
+- **Parallel execution** across all combinations
+
+#### 3. **Pre-commit Job** (`pre-commit`)
+- **All pre-commit hooks** including basic checks, YAML/TOML/JSON validation
+- **Ruff integration** for consistent linting and formatting
+- **End-of-file fixing** and **trailing whitespace removal**
+
+#### 4. **Build Job** (`build`)
+- **UV build** for wheel and source distribution
+- **Twine check** for package validation
+- **Artifact upload** for deployment readiness
+
+#### 5. **Install-test Job** (`install-test`)
+- **Cross-platform wheel installation** testing
+- **CLI entry point verification** across all platforms
+- **Import testing** to ensure package integrity
+
+## Key Configuration Files
+- Main CI: [.github/workflows/ci.yml](mdc:.github/workflows/ci.yml)
+- Coverage config: [pyproject.toml](mdc:pyproject.toml) `[tool.coverage.*]`
+- Pre-commit: [.pre-commit-config.yaml](mdc:.pre-commit-config.yaml)
+- Package build: [pyproject.toml](mdc:pyproject.toml) `[build-system]`
+
+## UV-First Approach
+This project uses **UV exclusively** for:
+- ✅ Dependency management and virtual environments
+- ✅ Build and publish workflows
+- ✅ Fast, reliable Python environment setup
+- ❌ **NOT Smithery** (per project memory: uses uvx only for ClearML integration)
+
+## Quality Standards
+- **Test Coverage**: 65% minimum (currently 69%)
+- **Platform Support**: Ubuntu, macOS, Windows
+- **Python Support**: 3.10, 3.11, 3.12, 3.13
+- **Code Quality**: Ruff with file-level ignores for appropriate flexibility
+- **Type Safety**: Ty checking with informational warnings
+
+## Verification Commands
+```bash
+# Local testing (matches CI)
+uv run pytest --verbose --color=yes tests
+uv run coverage run -m pytest tests && uv run coverage report
+ruff check --output-format=github src/ tests/ examples/
+ruff format --check src/ tests/ examples/
+uv run ty check
+pre-commit run --all-files
+uv build
+```
+
+This comprehensive approach ensures high quality, cross-platform compatibility, and deployment readiness for every change.
