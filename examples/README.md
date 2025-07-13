@@ -20,6 +20,10 @@ The smolagents example demonstrates how to create an intelligent agent that can 
 
 3. **Dependencies**: Install the required packages:
    ```bash
+   # Option 1: Use uv dependency group (recommended)
+   uv sync --group examples
+   
+   # Option 2: Install directly
    cd examples/smolagents_example
    pip install -r requirements.txt
    ```
@@ -30,24 +34,37 @@ The smolagents example demonstrates how to create an intelligent agent that can 
 Run the basic example to test the integration:
 
 ```bash
-python simple_example.py
+# Using task runner (recommended)
+uv run task example-simple
+
+# Or directly
+python examples/smolagents_example/simple_example.py
 ```
 
-This will:
-- Connect to your ClearML instance via the MCP server
-- Use Gemini to analyze and list your projects
-- Demonstrate the basic agent functionality
-
-#### Full Analysis Agent
-Run the comprehensive analysis agent:
+#### OpenAI-Compatible Example (Recommended)
+Run the enhanced example using Gemini 2.0 Flash via OpenAI API:
 
 ```bash
-python clearml_analysis_agent.py
+# Using task runner (recommended)
+uv run task example
+
+# Or directly  
+python examples/smolagents_example/openai_compatible_example.py
 ```
 
-Choose between:
-- **Demo mode**: Runs predefined analysis queries
-- **Interactive mode**: Ask questions in natural language
+Features:
+- **Rich UI**: Beautiful terminal interface with panels and progress bars
+- **Gemini 2.0 Flash**: Latest model via OpenAI-compatible API
+- **Enhanced Analysis**: More detailed experiment insights
+- **Demo mode**: Runs 5 comprehensive analysis queries
+- **Interactive mode**: Real-time Q&A with rich formatting
+
+#### Legacy Gemini Example
+Run the original Gemini API example:
+
+```bash
+python examples/smolagents_example/clearml_analysis_agent.py
+```
 
 ### Example Queries
 

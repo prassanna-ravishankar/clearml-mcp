@@ -38,6 +38,10 @@ dev = [
     "setuptools>=80.9.0",
     "pre-commit>=4.2.0",
 ]
+examples = [
+    "smolagents[openai,mcp]>=1.20.0",
+    "rich>=10.0.0",
+]
 
 [project.scripts]
 clearml-mcp = "clearml_mcp.clearml_mcp:main"
@@ -66,6 +70,8 @@ publish = { cmd = "portray on_github_pages", help = "Publish documentation on Gi
 tests = { cmd = "pytest --verbose --color=yes tests", help = "Run all tests using pytest" }
 coverage = { cmd = "coverage run -m pytest tests && coverage report", help = "Generate coverage report" }
 run = { cmd = "uv run ./src/clearml_mcp/clearml_mcp.py", help = "Run main application" }
+example = { cmd = "uv run --group examples examples/smolagents_example/openai_compatible_example.py", help = "Run smolagents example with Gemini" }
+example-simple = { cmd = "uv run --group examples examples/smolagents_example/simple_example.py", help = "Run simple smolagents example" }
 
 [tool.ruff]
 line-length = 100
