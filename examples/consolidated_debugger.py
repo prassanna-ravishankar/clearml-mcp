@@ -1,115 +1,116 @@
 #!/usr/bin/env python3
 """
-ClearML Experiment Debugger - Consolidated Example
-
-This unified example combines all debugging capabilities:
-- Real experiment discovery and analysis
-- Scalar convergence analysis
-- Common ML issue detection
-- Expert-level debugging recommendations
-
-Features:
-- Smart experiment discovery
-- Convergence pattern analysis
-- Overfitting detection
-- Learning rate optimization
-- Training stability assessment
-- Actionable recommendations
-
-Usage:
-    uv run --group examples examples/consolidated_debugger.py
+ClearML MCP Demo Script
+Demonstrates real-time analysis of ClearML experiment data using MCP tools.
 """
 
 import os
-from typing import Any, Dict, List
+import time
 
 from mcp import StdioServerParameters
-
-# Set up Gemini API key
-GEMINI_API_KEY = "AIzaSyDAdEToKdFt8SHs25ABz65bx6cedU_zreo"
-
-try:
-    from rich.columns import Columns
-    from rich.console import Console
-    from rich.panel import Panel
-    from rich.progress import Progress, SpinnerColumn, TextColumn
-    from rich.table import Table
-    from rich.text import Text
-    from smolagents import CodeAgent, MCPClient, OpenAIServerModel
-except ImportError:
-    print("❌ Required packages not found. Install with: uv sync --group examples")
-    raise
+from rich.console import Console
+from rich.panel import Panel
+from smolagents import CodeAgent, MCPClient, OpenAIServerModel
 
 console = Console()
 
 
-class ClearMLDebugger:
-    """Unified ClearML experiment debugger with all capabilities."""
+class ClearMLDemo:
+    """Demo class for ClearML MCP integration."""
 
     def __init__(self):
+        """Initialize the demo with OpenAI client and ClearML MCP connection."""
         self.model = OpenAIServerModel(
             model_id="gemini-2.0-flash",
             api_base="https://generativelanguage.googleapis.com/v1beta/openai/",
-            api_key=GEMINI_API_KEY,
+            api_key="AIzaSyDAdEToKdFt8SHs25ABz65bx6cedU_zreo",
             temperature=0.1,
         )
-
         self.clearml_server_params = StdioServerParameters(
             command="python",
             args=["-m", "clearml_mcp.clearml_mcp"],
             env=os.environ,
         )
+        self.experiment_id = None
 
-    def show_capabilities(self):
-        """Display debugging capabilities."""
+    def run_demo(self):
+        """Run the complete demo workflow."""
+        # Show demo introduction
         console.print(
             Panel.fit(
-                "[bold cyan]🔍 ClearML Debugging Capabilities[/bold cyan]\n"
-                "[dim]Complete experiment analysis and optimization recommendations[/dim]",
-                border_style="cyan",
+                "[bold blue]🎯 ClearML MCP Demo[/bold blue]\n"
+                "[dim]Real-time analysis of ClearML experiment data[/dim]",
+                border_style="blue",
+            )
+        )
+        console.print()
+
+        # Step 1: Find the experiment
+        self._find_experiment()
+
+        # Step 2: Analyze the experiment
+        self._analyze_experiment()
+
+        # Demo complete
+        console.print()
+        console.print(
+            Panel.fit(
+                "[bold green]✅ Demo Complete![/bold green]\n"
+                "[dim]ClearML MCP analysis finished successfully[/dim]",
+                border_style="green",
             )
         )
 
-        capabilities = Table(title="Debugging Analysis Features")
-        capabilities.add_column("Category", style="cyan", no_wrap=True)
-        capabilities.add_column("Analysis", style="yellow")
-        capabilities.add_column("Detects", style="red")
-        capabilities.add_column("Recommends", style="green")
+        # Final pause for demo wrap-up
+        if os.getenv("DEMO_MODE") == "1":
+            console.print("[dim]⏱️  Demo completed - thank you for watching![/dim]")
+            time.sleep(3)
 
-        capabilities.add_row(
-            "🔍 Discovery",
-            "• Find real experiments\n• Identify training data\n• Locate scalar metrics\n• Project analysis",
-            "• Active experiments\n• Completed training\n• Available metrics\n• Data patterns",
-            "• Best experiments\n• Debug targets\n• Analysis scope\n• Next steps",
+    def _find_experiment(self):
+        """Find and validate the target experiment."""
+        console.print("[yellow]📍 Step 1: Finding target experiment...[/yellow]")
+
+        # Add demo pause
+        if os.getenv("DEMO_MODE") == "1":
+            console.print("[dim]⏱️  Pausing for demo readability...[/dim]")
+            time.sleep(4)
+
+        target_experiment_name = "PyTorch with TensorBoard"
+
+        find_query = f"""
+        Discover and validate a ClearML experiment for analysis:
+
+        TARGET: Find a PyTorch experiment with TensorBoard logging in ClearML examples
+
+        DISCOVERY STRATEGY:
+        1. Use find_project_by_pattern with pattern "Pytorch" to find PyTorch-related projects
+        2. Look for projects that contain "Frameworks" and "Pytorch" in the name
+        3. Once you find the right project, use find_experiment_in_project with pattern "TensorBoard"
+        4. Find the experiment named "{target_experiment_name}"
+        5. Get the experiment ID, status, and verify it has scalar metrics
+        6. If dynamic discovery fails, fall back to known experiment ID: e-efe5f7a6c5f34a15b4bfbf1c33660e20
+
+        TOOLS TO USE:
+        - find_project_by_pattern(pattern="Pytorch")
+        - find_experiment_in_project(project_name=<found_project>, experiment_pattern="TensorBoard")
+        - get_task_info(task_id=<found_experiment_id>) to validate
+
+        IMPORTANT: Start your response with "EXPERIMENT_ID: [the actual ID]" followed by your discovery process and validation.
+        """
+
+        # Print the query
+        console.print(
+            Panel(
+                f"[bold blue]📤 Query to LLM[/bold blue]\n\n[dim]{find_query.strip()}[/dim]",
+                border_style="blue",
+                padding=(1, 2),
+            )
         )
 
-        capabilities.add_row(
-            "📊 Convergence",
-            "• Loss patterns\n• Accuracy trends\n• Rate analysis\n• Stability check",
-            "• Good convergence\n• Slow progress\n• Oscillations\n• Plateaus",
-            "• Optimal stopping\n• Rate adjustments\n• Training duration\n• Improvements",
-        )
-
-        capabilities.add_row(
-            "🚨 Issues",
-            "• Overfitting gaps\n• Instability signs\n• Performance drops\n• Anomaly detection",
-            "• Train/val gaps\n• Gradient explosion\n• NaN losses\n• Poor generalization",
-            "• Regularization\n• Gradient clipping\n• Architecture fixes\n• Data solutions",
-        )
-
-        capabilities.add_row(
-            "⚙️ Optimization",
-            "• Hyperparameter review\n• Architecture assessment\n• Training efficiency\n• Resource usage",
-            "• Suboptimal settings\n• Bottlenecks\n• Waste/inefficiency\n• Improvement potential",
-            "• Parameter tuning\n• Architecture changes\n• Efficiency gains\n• Best practices",
-        )
-
-        console.print(capabilities)
-        console.print()
-
-    def find_real_experiments(self) -> list[str]:
-        """Find real experiments in ClearML instance."""
-        console.print("\n[yellow]🔍 Step 1: Discovering real experiments...[/yellow]")
+        # Give viewers time to read the query
+        if os.getenv("DEMO_MODE") == "1":
+            console.print("[dim]⏱️  Allowing time to read query...[/dim]")
+            time.sleep(3)
 
         with MCPClient(self.clearml_server_params) as clearml_tools:
             agent = CodeAgent(
@@ -117,300 +118,132 @@ class ClearMLDebugger:
                 model=self.model,
                 add_base_tools=False,
                 verbosity_level=1,
-                max_steps=2,
+                max_steps=5,
             )
 
-            discovery_query = """
-            Find real ClearML experiments by:
-
-            1. List all projects to see what's available
-            2. For each project, search for tasks with training keywords:
-               - "train", "training", "model", "neural", "learning"
-               - "loss", "accuracy", "epoch", "batch"
-               - "pytorch", "tensorflow", "keras"
-            3. Get basic info for promising tasks
-            4. Check which tasks have actual scalar metrics
-            5. Return 2-3 best experiment IDs for debugging
-
-            Focus on experiments with real training data and metrics.
-            """
-
             try:
-                result = agent.run(discovery_query)
+                result = agent.run(find_query)
                 console.print(
                     Panel(
-                        f"[bold green]🎯 Experiment Discovery[/bold green]\n\n{result}",
+                        f"[bold green]🔍 Experiment Discovery[/bold green]\n\n{result}",
                         border_style="green",
                         padding=(1, 2),
                     )
                 )
-                return []  # Would extract IDs from result in real implementation
+
+                # Extract experiment ID from the result
+                if "EXPERIMENT_ID:" in result:
+                    lines = result.split("\n")
+                    for line in lines:
+                        if line.strip().startswith("EXPERIMENT_ID:"):
+                            self.experiment_id = line.split("EXPERIMENT_ID:")[1].strip()
+                            break
+
+                # Fallback if experiment ID extraction failed
+                if not self.experiment_id:
+                    console.print(
+                        "[yellow]⚠️  Search had issues - using known experiment ID for demo[/yellow]"
+                    )
+                    console.print(
+                        "[cyan]💡 In production, you'd retry the search or browse the project manually[/cyan]"
+                    )
+                    self.experiment_id = "e-efe5f7a6c5f34a15b4bfbf1c33660e20"
+                    console.print(f"[green]✅ Using experiment: {self.experiment_id}[/green]")
+
+                # Add demo pause
+                if os.getenv("DEMO_MODE") == "1":
+                    console.print("[dim]⏱️  Allowing time to read discovery results...[/dim]")
+                    time.sleep(6)
 
             except Exception as e:
-                if "429" in str(e):
-                    console.print(
-                        Panel(
-                            "[bold yellow]⏳ Rate Limited[/bold yellow]\n\n"
-                            "Discovery would find:\n"
-                            "• Real experiment IDs\n"
-                            "• Available metrics\n"
-                            "• Training patterns\n"
-                            "• Analysis targets",
-                            border_style="yellow",
-                        )
-                    )
-                else:
-                    console.print(f"[red]❌ Discovery failed: {e!s}[/red]")
-                return []
+                console.print(f"[red]❌ Experiment discovery failed: {e!s}[/red]")
 
-    def analyze_scalar_patterns(self, experiment_ids: list[str] = None):
-        """Analyze scalar metrics for convergence patterns."""
-        console.print("\n[yellow]📊 Step 2: Analyzing scalar convergence patterns...[/yellow]")
+    def _analyze_experiment(self):
+        """Analyze the experiment's scalar convergence patterns."""
+        console.print("[yellow]📊 Step 2: Analyzing scalar convergence patterns...[/yellow]")
 
-        # Use realistic demo data if no real experiments found
-        demo_scenarios = [
-            {
-                "name": "Perfect Convergence",
-                "train_loss": [2.3, 1.8, 1.4, 1.1, 0.9, 0.8, 0.7, 0.65, 0.62, 0.60],
-                "val_loss": [2.4, 1.9, 1.5, 1.2, 1.0, 0.85, 0.75, 0.72, 0.70, 0.68],
-                "train_acc": [0.2, 0.35, 0.48, 0.58, 0.66, 0.72, 0.77, 0.81, 0.83, 0.85],
-                "val_acc": [0.18, 0.32, 0.45, 0.55, 0.63, 0.69, 0.74, 0.78, 0.80, 0.82],
-                "pattern": "good_convergence",
-            },
-            {
-                "name": "Overfitting Pattern",
-                "train_loss": [2.1, 1.5, 1.0, 0.7, 0.5, 0.3, 0.2, 0.1, 0.05, 0.02],
-                "val_loss": [2.2, 1.6, 1.1, 0.8, 0.9, 1.1, 1.3, 1.5, 1.8, 2.0],
-                "train_acc": [0.25, 0.42, 0.58, 0.71, 0.82, 0.89, 0.94, 0.97, 0.99, 1.0],
-                "val_acc": [0.23, 0.40, 0.55, 0.68, 0.65, 0.62, 0.58, 0.55, 0.52, 0.50],
-                "pattern": "overfitting",
-            },
-        ]
+        # Check if we have an experiment ID from the discovery step
+        if not self.experiment_id:
+            console.print("[red]❌ No experiment ID found from discovery step[/red]")
+            return
+
+        # Add demo pause
+        if os.getenv("DEMO_MODE") == "1":
+            console.print("[dim]⏱️  Pausing for demo readability...[/dim]")
+            time.sleep(4)
+
+        console.print(f"[cyan]🔍 Using discovered experiment ID: {self.experiment_id}[/cyan]")
+
+        # Add a pause to show the discovered ID
+        if os.getenv("DEMO_MODE") == "1":
+            console.print("[dim]⏱️  Setting up analysis workflow...[/dim]")
+            time.sleep(3)
+
+        analysis_query = f"""
+        Analyze this ClearML experiment's scalar convergence patterns:
+
+        EXPERIMENT ID: {self.experiment_id}
+
+        DETAILED ANALYSIS TASKS:
+        1. Use ClearML MCP tools to retrieve all scalar metrics from this experiment
+        2. Extract training and validation metrics (loss, accuracy, etc.)
+        3. Calculate convergence rates from the retrieved values
+        4. Identify convergence quality (good/concerning/poor)
+        5. Check for overfitting signs in training vs validation metrics
+        6. Assess learning rate appropriateness based on convergence patterns
+        7. Determine optimal stopping point from the data
+        8. Provide specific, actionable recommendations
+
+        Focus on numerical evidence and actionable insights from the REAL experiment data.
+        Show your work with calculations and specific metric values.
+        """
+
+        # Print the query
+        console.print(
+            Panel(
+                f"[bold blue]📤 Query to LLM[/bold blue]\n\n[dim]{analysis_query.strip()}[/dim]",
+                border_style="blue",
+                padding=(1, 2),
+            )
+        )
+
+        # Give viewers time to read the analysis query
+        if os.getenv("DEMO_MODE") == "1":
+            console.print("[dim]⏱️  Allowing time to read analysis query...[/dim]")
+            time.sleep(4)
 
         with MCPClient(self.clearml_server_params) as clearml_tools:
             agent = CodeAgent(
                 tools=clearml_tools,
                 model=self.model,
                 add_base_tools=False,
-                verbosity_level=0,
-                max_steps=1,
+                verbosity_level=1,
+                max_steps=10,
             )
 
-            for scenario in demo_scenarios:
-                console.print(f"\n[blue]📈 Analyzing: {scenario['name']}[/blue]")
-
-                analysis_query = f"""
-                Analyze this training scenario's scalar convergence:
-
-                METRICS:
-                Training Loss: {scenario["train_loss"]}
-                Validation Loss: {scenario["val_loss"]}
-                Training Accuracy: {scenario["train_acc"]}
-                Validation Accuracy: {scenario["val_acc"]}
-
-                CONVERGENCE ANALYSIS:
-                1. Calculate convergence rate from loss values
-                2. Identify convergence quality (good/concerning/poor)
-                3. Check for overfitting signs in train vs validation
-                4. Assess learning rate appropriateness
-                5. Determine optimal stopping point
-                6. Provide specific recommendations
-
-                Focus on numerical evidence and actionable insights.
-                """
-
-                try:
-                    result = agent.run(analysis_query)
-                    console.print(
-                        Panel(
-                            f"[bold green]📊 {scenario['name']} Analysis[/bold green]\n\n{result}",
-                            border_style="green",
-                            padding=(1, 2),
-                        )
+            try:
+                result = agent.run(analysis_query)
+                console.print(
+                    Panel(
+                        f"[bold green]📊 Convergence Analysis[/bold green]\n\n{result}",
+                        border_style="green",
+                        padding=(1, 2),
                     )
-
-                except Exception as e:
-                    if "429" in str(e):
-                        # Provide fallback analysis
-                        if scenario["pattern"] == "good_convergence":
-                            fallback = (
-                                "[bold]✅ GOOD CONVERGENCE DETECTED[/bold]\n"
-                                "• Training loss: Smooth decrease (2.3 → 0.60, 74% improvement)\n"
-                                "• Validation loss: Following training (2.4 → 0.68)\n"
-                                "• Healthy gap: 0.60 vs 0.68 (minimal overfitting)\n"
-                                "• Recommendation: Continue 2-3 more epochs"
-                            )
-                        else:
-                            fallback = (
-                                "[bold]🚨 OVERFITTING DETECTED[/bold]\n"
-                                "• Overfitting starts: Epoch 4 (validation loss increases)\n"
-                                "• Training accuracy: Perfect (100%) - suspicious\n"
-                                "• Validation accuracy: Declining (68% → 50%)\n"
-                                "• Recommendation: Stop training, add regularization"
-                            )
-
-                        console.print(
-                            Panel(
-                                f"[bold yellow]⏳ Rate Limited - Analysis Summary[/bold yellow]\n\n{fallback}",
-                                border_style="yellow",
-                                padding=(1, 2),
-                            )
-                        )
-                    else:
-                        console.print(f"[red]❌ Analysis failed: {e!s}[/red]")
-
-    def demonstrate_issue_detection(self):
-        """Demonstrate detection of common ML issues."""
-        console.print("\n[yellow]🐛 Step 3: Demonstrating ML issue detection...[/yellow]")
-
-        issues = [
-            {
-                "title": "🚨 Learning Rate Too High",
-                "pattern": "Loss oscillating wildly: 2.1 → 0.8 → 3.2 → 1.1 → 4.5",
-                "diagnosis": "Unstable training due to excessive learning rate",
-                "solution": "Reduce LR by 10x, add gradient clipping",
-            },
-            {
-                "title": "🐌 Vanishing Gradients",
-                "pattern": "50 epochs: loss only 2.3 → 2.1, gradients ~0.001",
-                "diagnosis": "Extremely slow learning, likely vanishing gradients",
-                "solution": "Better initialization, increase LR, check architecture",
-            },
-            {
-                "title": "💥 Training Explosion",
-                "pattern": "Epoch 21: Loss jumps to 15.6, then NaN",
-                "diagnosis": "Gradient explosion, mixed precision issues",
-                "solution": "Gradient clipping, loss scaling, numerical stability",
-            },
-        ]
-
-        issue_table = Table(title="Common ML Issues Detection")
-        issue_table.add_column("Issue", style="red")
-        issue_table.add_column("Pattern", style="yellow")
-        issue_table.add_column("Diagnosis", style="blue")
-        issue_table.add_column("Solution", style="green")
-
-        for issue in issues:
-            issue_table.add_row(
-                issue["title"],
-                issue["pattern"],
-                issue["diagnosis"],
-                issue["solution"],
-            )
-
-        console.print(issue_table)
-        console.print()
-
-    def provide_optimization_recommendations(self):
-        """Provide expert optimization recommendations."""
-        console.print("\n[yellow]⚙️ Step 4: Optimization recommendations...[/yellow]")
-
-        recommendations = Panel(
-            "[bold green]🎯 Expert Optimization Recommendations[/bold green]\n\n"
-            "[bold]For Good Convergence:[/bold]\n"
-            "• Continue training 2-3 more epochs\n"
-            "• Monitor validation metrics closely\n"
-            "• Consider learning rate decay\n\n"
-            "[bold]For Overfitting:[/bold]\n"
-            "• Add dropout (0.2-0.5) or weight decay\n"
-            "• Increase dataset size or augmentation\n"
-            "• Reduce model complexity\n"
-            "• Implement early stopping\n\n"
-            "[bold]For Slow Convergence:[/bold]\n"
-            "• Increase learning rate by 2-10x\n"
-            "• Use learning rate warmup\n"
-            "• Check weight initialization\n"
-            "• Consider different optimizer (Adam vs SGD)\n\n"
-            "[bold]For Instability:[/bold]\n"
-            "• Add gradient clipping (max_norm=1.0)\n"
-            "• Reduce learning rate by 5-10x\n"
-            "• Use mixed precision carefully\n"
-            "• Check for numerical overflow",
-            border_style="green",
-            padding=(1, 2),
-        )
-
-        console.print(recommendations)
-
-    def run_complete_analysis(self):
-        """Run the complete debugging analysis."""
-        console.print(
-            Panel.fit(
-                "[bold magenta]🧪 ClearML Complete Experiment Debugger[/bold magenta]\n"
-                "[dim]Comprehensive ML debugging with real experiment analysis[/dim]",
-                border_style="magenta",
-            )
-        )
-
-        # Show capabilities
-        self.show_capabilities()
-
-        try:
-            # Step 1: Find real experiments
-            experiment_ids = self.find_real_experiments()
-
-            # Step 2: Analyze scalar patterns
-            self.analyze_scalar_patterns(experiment_ids)
-
-            # Step 3: Demonstrate issue detection
-            self.demonstrate_issue_detection()
-
-            # Step 4: Provide recommendations
-            self.provide_optimization_recommendations()
-
-            # Summary
-            console.print(
-                Panel.fit(
-                    "[bold green]✅ Complete Analysis Finished![/bold green]\n\n"
-                    "[dim]The debugger has:\n"
-                    "• Discovered available experiments\n"
-                    "• Analyzed convergence patterns\n"
-                    "• Detected common ML issues\n"
-                    "• Provided optimization recommendations\n\n"
-                    "Ready for real experiment debugging![/dim]",
-                    border_style="green",
                 )
-            )
 
-        except KeyboardInterrupt:
-            console.print("\n[yellow]👋 Analysis interrupted by user[/yellow]")
-        except Exception as e:
-            console.print(f"\n[red]❌ Analysis error: {e!s}[/red]")
+                # Add demo pause
+                if os.getenv("DEMO_MODE") == "1":
+                    console.print("[dim]⏱️  Allowing time to read detailed analysis...[/dim]")
+                    time.sleep(8)
+
+            except Exception as e:
+                console.print(f"[red]❌ Analysis failed: {e!s}[/red]")
 
 
 def main():
-    """Main function with user interaction."""
-    debugger = ClearMLDebugger()
-
-    console.print("\n[bold]Available Analysis Modes:[/bold]")
-    console.print("1. [green]Complete Analysis[/green] - Full debugging workflow")
-    console.print("2. [blue]Quick Scalar Analysis[/blue] - Focus on convergence patterns")
-    console.print("3. [yellow]Issue Detection Demo[/yellow] - Show common problems")
-    console.print("4. [cyan]Capabilities Overview[/cyan] - Show what we can analyze")
-    console.print()
-
-    try:
-        choice = console.input(
-            "[bold]Choose mode [green][1][/green] Complete, [blue][2][/blue] Scalar, [yellow][3][/yellow] Issues, [cyan][4][/cyan] Overview (default: 1): "
-        ).strip()
-    except (EOFError, KeyboardInterrupt):
-        choice = "1"  # Default to complete analysis
-        console.print("[dim]Running complete analysis (non-interactive execution)[/dim]")
-
-    try:
-        if choice == "2":
-            debugger.analyze_scalar_patterns()
-        elif choice == "3":
-            debugger.demonstrate_issue_detection()
-        elif choice == "4":
-            debugger.show_capabilities()
-        else:
-            debugger.run_complete_analysis()
-
-    except KeyboardInterrupt:
-        console.print("\n[yellow]👋 Analysis interrupted by user[/yellow]")
-    except Exception as e:
-        console.print(f"\n[red]❌ Analysis error: {e!s}[/red]")
+    """Main demo function."""
+    demo = ClearMLDemo()
+    demo.run_demo()
 
 
 if __name__ == "__main__":

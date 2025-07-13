@@ -163,7 +163,7 @@ For any MCP-compatible AI assistant, use this configuration:
 
 ## 🛠️ Available Tools
 
-The ClearML MCP server provides **12 comprehensive tools** for ML experiment analysis:
+The ClearML MCP server provides **14 comprehensive tools** for ML experiment analysis:
 
 ### 📊 Task Operations
 - `get_task_info` - Get detailed task information, parameters, and status
@@ -180,6 +180,8 @@ The ClearML MCP server provides **12 comprehensive tools** for ML experiment ana
 ### 📁 Project Operations
 - `list_projects` - Discover available ClearML projects
 - `get_project_stats` - Get project statistics and task summaries
+- `find_project_by_pattern` - Find projects matching name patterns
+- `find_experiment_in_project` - Find specific experiments within projects
 
 ### 🔍 Analysis Tools
 - `compare_tasks` - Compare multiple tasks by specific metrics
@@ -189,7 +191,7 @@ The ClearML MCP server provides **12 comprehensive tools** for ML experiment ana
 
 ### Demo
 
-[![asciicast](https://asciinema.org/a/KYuFcn2WSNMBUmYfk3uMbLpau.svg)](https://asciinema.org/a/KYuFcn2WSNMBUmYfk3uMbLpau)
+[![asciicast](https://asciinema.org/a/3eUmgiUJGRVYa9uEJXz5oPXFj.svg)](https://asciinema.org/a/3eUmgiUJGRVYa9uEJXz5oPXFj)
 
 Once configured, you can ask your AI assistant questions like:
 
@@ -270,9 +272,8 @@ npx @modelcontextprotocol/inspector uvx clearml-mcp
 ## 📋 Requirements
 
 - **Python 3.10+**
-- **ClearML SDK** (automatically installed)
-- **Valid ClearML configuration** with API credentials
-- **UV package manager** (recommended) or pip
+- **uv** ([installation guide](https://docs.astral.sh/uv/getting-started/installation/)) or pip
+- **ClearML account** with valid API credentials in `~/.clearml/clearml.conf`
 
 ## 🤝 Contributing
 
