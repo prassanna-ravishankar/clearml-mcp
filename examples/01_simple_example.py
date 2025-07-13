@@ -10,8 +10,19 @@ import os
 
 from mcp import StdioServerParameters
 
+# Load environment variables from .env file
+try:
+    from dotenv import load_dotenv
+
+    load_dotenv()
+except ImportError:
+    print("dotenv package not found, skipping.")
+
 # Set up Gemini API key
-GEMINI_API_KEY = "AIzaSyDAdEToKdFt8SHs25ABz65bx6cedU_zreo"
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
+if not GEMINI_API_KEY:
+    raise ValueError("GEMINI_API_KEY environment variable not set")
+
 os.environ["GOOGLE_API_KEY"] = GEMINI_API_KEY
 
 from smolagents import CodeAgent, MCPClient
