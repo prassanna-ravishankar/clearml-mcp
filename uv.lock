@@ -247,6 +247,7 @@ dev = [
     { name = "ty" },
 ]
 examples = [
+    { name = "python-dotenv" },
     { name = "rich" },
     { name = "smolagents", extra = ["mcp", "openai"] },
 ]
@@ -273,6 +274,7 @@ dev = [
     { name = "ty", specifier = ">=0.0.1a11" },
 ]
 examples = [
+    { name = "python-dotenv", specifier = ">=0.21.0" },
     { name = "rich", specifier = ">=10.0.0" },
     { name = "smolagents", extras = ["openai", "mcp"], specifier = ">=1.20.0" },
 ]
