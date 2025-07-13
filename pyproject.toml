@@ -72,6 +72,7 @@ tests = { cmd = "pytest --verbose --color=yes tests", help = "Run all tests usin
 coverage = { cmd = "coverage run -m pytest tests && coverage report", help = "Generate coverage report" }
 run = { cmd = "uv run ./src/clearml_mcp/clearml_mcp.py", help = "Run main application" }
 consolidated-debug = { cmd = "uv run --group examples examples/consolidated_debugger.py", help = "Run complete ML debugging analysis (recommended)" }
+demo = { cmd = "DEMO_MODE=1 uv run --group examples examples/consolidated_debugger.py", help = "Run optimized demo for screen recording" }
 example-simple = { cmd = "uv run --group examples examples/01_simple_example.py", help = "Basic MCP + smolagents integration" }
 example = { cmd = "uv run --group examples examples/02_openai_compatible_example.py", help = "Gemini via OpenAI API example" }
 find-experiments = { cmd = "uv run --group examples examples/03_find_real_experiments.py", help = "Discover real experiments in ClearML" }
@@ -155,6 +156,7 @@ ignore = [
     "PERF401", # use list comprehension (specific instances)
     "C401", # unnecessary generator (specific instances)
     "PLR0913", # too many arguments (specific functions)
+    "S110", # try-except-pass (legitimate for skipping inaccessible tasks)
 ]
 
 [tool.ty]

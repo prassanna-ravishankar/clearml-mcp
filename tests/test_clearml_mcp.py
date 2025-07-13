@@ -129,19 +129,22 @@ class TestTaskListing:
     @patch("clearml_mcp.clearml_mcp.Task")
     async def test_lists_all_tasks_without_filters(self, mock_task):
         """list_tasks returns all tasks when no filters applied."""
-        # Create multiple task mocks
-        tasks = []
-        for i in range(3):
-            task = Mock()
-            task.id = f"task_{i}"
-            task.name = f"Task {i}"
-            task.status = "completed" if i % 2 == 0 else "running"
-            task.project = "Test Project"
-            task.created = f"2024-01-0{i + 1}T00:00:00Z"
-            task.tags = [f"tag_{i}"]
-            tasks.append(task)
+        # Mock query_tasks to return task IDs
+        task_ids = ["task_0", "task_1", "task_2"]
+        mock_task.query_tasks.return_value = task_ids
 
-        mock_task.query_tasks.return_value = tasks
+        # Mock get_task to return task objects
+        def mock_get_task(task_id):
+            task = Mock()
+            task.id = task_id
+            task.name = f"Task {task_id.split('_')[1]}"
+            task.status = "completed" if int(task_id.split("_")[1]) % 2 == 0 else "running"
+            task.get_project_name.return_value = "Test Project"
+            task.data.created = f"2024-01-0{int(task_id.split('_')[1]) + 1}T00:00:00Z"
+            task.data.tags = [f"tag_{task_id.split('_')[1]}"]
+            return task
+
+        mock_task.get_task = mock_get_task
 
         result = await clearml_mcp.list_tasks.fn()
 
@@ -155,15 +158,22 @@ class TestTaskListing:
     @patch("clearml_mcp.clearml_mcp.Task")
     async def test_filters_tasks_by_project_and_status(self, mock_task):
         """list_tasks applies project and status filters correctly."""
-        task = Mock()
-        task.id = "filtered_task"
-        task.name = "Filtered Task"
-        task.status = "completed"
-        task.project = "Specific Project"
-        task.created = "2024-01-01T00:00:00Z"
-        task.tags = []
+        # Mock query_tasks to return task IDs
+        task_ids = ["filtered_task"]
+        mock_task.query_tasks.return_value = task_ids
 
-        mock_task.query_tasks.return_value = [task]
+        # Mock get_task to return task object
+        def mock_get_task(task_id):
+            task = Mock()
+            task.id = task_id
+            task.name = "Filtered Task"
+            task.status = "completed"
+            task.get_project_name.return_value = "Specific Project"
+            task.data.created = "2024-01-01T00:00:00Z"
+            task.data.tags = []
+            return task
+
+        mock_task.get_task = mock_get_task
 
         result = await clearml_mcp.list_tasks.fn(
             project_name="Specific Project", status="completed"
@@ -522,21 +532,26 @@ class TestTaskSearch:
     @patch("clearml_mcp.clearml_mcp.Task")
     async def test_searches_by_task_name(self, mock_task):
         """search_tasks finds tasks by name matching."""
-        tasks = []
+        # Mock query_tasks to return task IDs
+        task_ids = ["task_0", "task_1", "task_2"]
+        mock_task.query_tasks.return_value = task_ids
+
+        # Mock get_task to return task objects with proper attributes
         names = ["Neural Network Training", "Data Processing", "Model Inference"]
 
-        for i, name in enumerate(names):
+        def mock_get_task(task_id):
+            i = int(task_id.split("_")[1])
             task = Mock()
-            task.id = f"task_{i}"
-            task.name = name
+            task.id = task_id
+            task.name = names[i]
             task.status = "completed"
-            task.project = "Test Project"
-            task.created = "2024-01-01T00:00:00Z"
-            task.tags = []
+            task.get_project_name.return_value = "Test Project"
+            task.data.created = "2024-01-01T00:00:00Z"
+            task.data.tags = []
             task.comment = None
-            tasks.append(task)
+            return task
 
-        mock_task.query_tasks.return_value = tasks
+        mock_task.get_task = mock_get_task
 
         result = await clearml_mcp.search_tasks.fn("neural")
 
@@ -547,25 +562,29 @@ class TestTaskSearch:
     @patch("clearml_mcp.clearml_mcp.Task")
     async def test_searches_by_tags_and_comments(self, mock_task):
         """search_tasks finds tasks by tags and comments."""
-        task1 = Mock()
-        task1.id = "task1"
-        task1.name = "Task 1"
-        task1.comment = "Experiment with new architecture"
-        task1.tags = ["deep-learning", "cnn"]
-        task1.status = "completed"
-        task1.project = "Project"
-        task1.created = "2024-01-01T00:00:00Z"
+        # Mock query_tasks to return task IDs
+        task_ids = ["task1", "task2"]
+        mock_task.query_tasks.return_value = task_ids
 
-        task2 = Mock()
-        task2.id = "task2"
-        task2.name = "Task 2"
-        task2.comment = "Basic training run"
-        task2.tags = ["baseline"]
-        task2.status = "completed"
-        task2.project = "Project"
-        task2.created = "2024-01-01T00:00:00Z"
+        # Mock get_task to return task objects with proper attributes
+        def mock_get_task(task_id):
+            task = Mock()
+            task.id = task_id
+            if task_id == "task1":
+                task.name = "Task 1"
+                task.comment = "Experiment with new architecture"
+                task.data.tags = ["deep-learning", "cnn"]
+            else:  # task2
+                task.name = "Task 2"
+                task.comment = "Basic training run"
+                task.data.tags = ["baseline"]
 
-        mock_task.query_tasks.return_value = [task1, task2]
+            task.status = "completed"
+            task.get_project_name.return_value = "Project"
+            task.data.created = "2024-01-01T00:00:00Z"
+            return task
+
+        mock_task.get_task = mock_get_task
 
         # Search by tag
         result = await clearml_mcp.search_tasks.fn("cnn")
@@ -573,7 +592,6 @@ class TestTaskSearch:
         assert result[0]["id"] == "task1"
 
         # Search by comment
-        mock_task.query_tasks.return_value = [task1, task2]
         result = await clearml_mcp.search_tasks.fn("architecture")
         assert len(result) == 1
         assert result[0]["id"] == "task1"

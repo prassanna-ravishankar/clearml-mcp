@@ -36,7 +36,9 @@ share/python-wheels/
 *.egg
 MANIFEST
 .pdm.toml
-*.lock
+poetry.lock
+Pipfile.lock
+# Keep uv.lock for dependency resolution
 
 # PyInstaller
 *.manifest
@@ -151,3 +153,6 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
+
+# VSCode settings
+.vscode/
