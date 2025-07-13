@@ -42,9 +42,9 @@ Only **truly global style choices** that apply project-wide:
 - `PLR0913` - Argument count (specific functions)
 
 ## Benefits
-✅ **Strict main code**: Source files enforce high quality standards  
-✅ **Appropriate flexibility**: Tests and examples have relaxed rules where needed  
-✅ **Clear rationale**: Each ignore is documented with specific reasoning  
+✅ **Strict main code**: Source files enforce high quality standards
+✅ **Appropriate flexibility**: Tests and examples have relaxed rules where needed
+✅ **Clear rationale**: Each ignore is documented with specific reasoning
 ✅ **Maintainable**: File-specific concerns handled at file level, not globally
 
 ## Verification

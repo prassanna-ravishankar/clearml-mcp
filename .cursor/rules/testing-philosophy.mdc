@@ -18,7 +18,7 @@ This project uses **behavioral (black-box) testing** instead of white-box testin
 - Test with realistic data scenarios
 
 ### ❌ DON'T: Test Internal Implementation
-- Avoid testing private methods directly  
+- Avoid testing private methods directly
 - Don't test internal data structures
 - Don't mock internal implementation details
 - Don't test "how" the code works, test "what" it does

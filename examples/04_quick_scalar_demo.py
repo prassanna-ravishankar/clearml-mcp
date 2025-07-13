@@ -50,7 +50,7 @@ def quick_scalar_analysis():
     # Quick scalar analysis scenario
     analysis_query = """
     Analyze this training scenario with specific scalar data:
-    
+
     EXPERIMENT SCALARS:
     Training Loss: [2.3, 1.8, 1.4, 1.1, 0.9, 0.8, 0.7, 0.65, 0.62, 0.60]
     Validation Loss: [2.4, 1.9, 1.5, 1.2, 1.0, 0.85, 0.75, 0.72, 0.70, 0.68]
@@ -58,7 +58,7 @@ def quick_scalar_analysis():
     Validation Accuracy: [0.18, 0.32, 0.45, 0.55, 0.63, 0.69, 0.74, 0.78, 0.80, 0.82]
     Learning Rate: [0.001] * 10 (fixed)
     Epochs: 10
-    
+
     CONVERGENCE ANALYSIS:
     1. Calculate the convergence rate from the loss values
     2. Identify if this shows good, concerning, or poor convergence
@@ -66,7 +66,7 @@ def quick_scalar_analysis():
     4. Assess if the learning rate is appropriate
     5. Determine optimal stopping point
     6. Provide specific recommendations based on the scalar trends
-    
+
     Focus on the numerical evidence and trends in the data.
     """
 

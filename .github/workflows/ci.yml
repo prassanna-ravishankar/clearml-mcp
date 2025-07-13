@@ -141,11 +141,14 @@ jobs:
       - name: Set up Python
         run: uv python install
 
+      - name: Create virtual environment
+        run: uv venv
+
       - name: Test wheel installation
-        run: uv pip install --system dist/*.whl
+        run: uv pip install dist/*.whl
 
       - name: Test package import
-        run: python -c "import clearml_mcp; print('✅ Package imported successfully')"
+        run: uv run python -c "import clearml_mcp; print('✅ Package imported successfully')"
 
       - name: Test CLI entry point
-        run: clearml-mcp --help || echo "✅ CLI entry point exists (may require ClearML config)" 
+        run: uv run clearml-mcp --help || echo "✅ CLI entry point exists (may require ClearML config)"

@@ -122,7 +122,7 @@ class ClearMLDebugger:
 
             discovery_query = """
             Find real ClearML experiments by:
-            
+
             1. List all projects to see what's available
             2. For each project, search for tasks with training keywords:
                - "train", "training", "model", "neural", "learning"
@@ -131,7 +131,7 @@ class ClearMLDebugger:
             3. Get basic info for promising tasks
             4. Check which tasks have actual scalar metrics
             5. Return 2-3 best experiment IDs for debugging
-            
+
             Focus on experiments with real training data and metrics.
             """
 
@@ -201,13 +201,13 @@ class ClearMLDebugger:
 
                 analysis_query = f"""
                 Analyze this training scenario's scalar convergence:
-                
+
                 METRICS:
                 Training Loss: {scenario["train_loss"]}
                 Validation Loss: {scenario["val_loss"]}
                 Training Accuracy: {scenario["train_acc"]}
                 Validation Accuracy: {scenario["val_acc"]}
-                
+
                 CONVERGENCE ANALYSIS:
                 1. Calculate convergence rate from loss values
                 2. Identify convergence quality (good/concerning/poor)
@@ -215,7 +215,7 @@ class ClearMLDebugger:
                 4. Assess learning rate appropriateness
                 5. Determine optimal stopping point
                 6. Provide specific recommendations
-                
+
                 Focus on numerical evidence and actionable insights.
                 """
 

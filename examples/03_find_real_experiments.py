@@ -60,12 +60,12 @@ def find_experiments():
 
         query = """
         Find real ClearML experiments by doing the following:
-        
+
         1. List all projects and find ones that might have experiments
         2. For the main projects (not subprojects), try to list tasks
         3. If you find any real experiments, show me their IDs, names, and status
         4. Focus on finding at least 1-3 real experiment IDs that we can debug
-        
+
         I need actual experiment IDs that exist, not example ones.
         """
 

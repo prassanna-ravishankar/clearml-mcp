@@ -29,7 +29,7 @@ api_server = https://api.clear.ml
 web_server = https://app.clear.ml
 files_server = https://files.clear.ml
 credentials {
-    "access_key": "your-access-key", 
+    "access_key": "your-access-key",
     "secret_key": "your-secret-key"
 }
 ```
@@ -53,7 +53,7 @@ uvx clearml-mcp
 
 Add to your Claude Desktop configuration:
 
-**macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`  
+**macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
 **Windows**: `%APPDATA%/Claude/claude_desktop_config.json`
 
 ```json
@@ -147,7 +147,7 @@ For any MCP-compatible AI assistant, use this configuration:
 {
   "mcpServers": {
     "clearml": {
-      "command": "uvx", 
+      "command": "uvx",
       "args": ["clearml-mcp"]
     }
   }
@@ -172,7 +172,7 @@ The ClearML MCP server provides **12 comprehensive tools** for ML experiment ana
 - `get_task_metrics` - Access training metrics, scalars, and plots
 - `get_task_artifacts` - Get artifacts, model files, and outputs
 
-### 🤖 Model Operations  
+### 🤖 Model Operations
 - `get_model_info` - Get model metadata and configuration details
 - `list_models` - Browse available models with filtering
 - `get_model_artifacts` - Access model files and download URLs
@@ -223,7 +223,7 @@ uv run task coverage
 uv run task lint
 uv run task format
 
-# Type checking  
+# Type checking
 uv run task type
 
 # Run examples
@@ -279,7 +279,7 @@ npx @modelcontextprotocol/inspector uvx clearml-mcp
 Contributions welcome! This project uses:
 
 - **UV** for dependency management
-- **Ruff** for linting and formatting  
+- **Ruff** for linting and formatting
 - **Pytest** for testing with 69% coverage
 - **GitHub Actions** for CI/CD
 

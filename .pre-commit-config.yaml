@@ -18,4 +18,4 @@ repos:
       - id: ruff-format
 
   # Removed mypy from pre-commit due to dependency issues
-  # Type checking is handled separately in CI 
+  # Type checking is handled separately in CI
