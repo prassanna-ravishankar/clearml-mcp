@@ -196,7 +196,7 @@ The ClearML MCP server provides **14 comprehensive tools** for ML experiment ana
 
 ### Demo
 
-[![asciicast](https://asciinema.org/a/3eUmgiUJGRVYa9uEJXz5oPXFj.svg)](https://asciinema.org/a/3eUmgiUJGRVYa9uEJXz5oPXFj)
+[![asciicast](https://asciinema.org/a/9Bf0hiIsEqGbf3zKnkdsNIbf0.svg)](https://asciinema.org/a/9Bf0hiIsEqGbf3zKnkdsNIbf0)
 
 Once configured, you can ask your AI assistant questions like:
 
