@@ -1,6 +1,7 @@
 """ClearML MCP Server implementation."""
 
-from typing import Any
+import re
+from typing import Any, cast
 
 from clearml import Model, Task
 from fastmcp import FastMCP
@@ -16,6 +17,77 @@ def initialize_clearml_connection() -> None:
             raise ValueError("No ClearML projects accessible - check your clearml.conf")
     except Exception as e:
         raise RuntimeError(f"Failed to initialize ClearML connection: {e!s}")
+
+
+# Fields fetched in the single bulk ``query_tasks`` call below. Requesting these
+# via ``additional_return_fields`` makes ClearML hydrate them server-side in one
+# paginated call (``tasks.get_all_ex`` with ``only_fields``), avoiding a per-task
+# ``Task.get_task`` round-trip (the N+1 problem fixed here, see issue #6).
+_TASK_FIELDS = ("id", "name", "status", "type", "comment", "created", "project", "tags")
+
+
+def _project_id_to_name(task_dicts: list[dict[str, Any]]) -> dict[str, str]:
+    """Build a project-id -> project-name map for the projects referenced by tasks.
+
+    ``query_tasks`` returns a project *id* per task. We resolve names in a single
+    ``get_projects`` call rather than one lookup per task.
+    """
+    project_ids = {d.get("project") for d in task_dicts if d.get("project")}
+    if not project_ids:
+        return {}
+    return {
+        proj.id: proj.name
+        for proj in Task.get_projects()
+        if getattr(proj, "id", None) in project_ids
+    }
+
+
+def _query_task_dicts(
+    project_name: str | None = None,
+    task_name: str | None = None,
+    tags: list[str] | None = None,
+    status: str | None = None,
+    any_pattern: str | None = None,
+    any_fields: tuple[str, ...] = ("name", "comment", "tags"),
+) -> list[dict[str, Any]]:
+    """Fetch fully hydrated task records in a single bulk backend call.
+
+    ``Task.query_tasks`` returns bare ID strings by default; with
+    ``additional_return_fields`` it returns a list of dicts with the requested
+    fields fetched in one bulk call. ``task_name``, ``status`` and ``any_pattern``
+    are all matched server-side so we never download every task just to filter
+    client-side. ``any_pattern`` is a regex matched against any of ``any_fields``.
+    """
+    task_filter: dict[str, Any] = {}
+    if status:
+        task_filter["status"] = [status]
+    if any_pattern:
+        task_filter["_any_"] = {"fields": list(any_fields), "pattern": any_pattern}
+    # ``additional_return_fields`` guarantees a list of dicts (one per task).
+    raw = cast(
+        "list[dict[str, Any]]",
+        Task.query_tasks(
+            project_name=project_name,
+            task_name=task_name,
+            tags=tags,
+            additional_return_fields=list(_TASK_FIELDS),
+            task_filter=task_filter or None,
+        ),
+    )
+    project_names = _project_id_to_name(raw)
+    return [
+        {
+            "id": d.get("id"),
+            "name": d.get("name"),
+            "status": d.get("status"),
+            "type": d.get("type"),
+            "comment": d.get("comment") or "",
+            "created": str(d.get("created")) if d.get("created") is not None else None,
+            "project": project_names.get(d.get("project"), d.get("project")),
+            "tags": list(d.get("tags") or []),
+        }
+        for d in raw
+    ]
 
 
 @mcp.tool()
@@ -46,33 +118,18 @@ async def list_tasks(
 ) -> list[dict[str, Any]]:
     """List ClearML tasks with filters."""
     try:
-        # Task.query_tasks returns task IDs (strings), not task objects
-        task_ids = Task.query_tasks(
-            project_name=project_name,
-            task_filter={"status": [status]} if status else None,
-            tags=tags,
-        )
-
-        # Convert task IDs to full task objects
-        tasks = []
-        for task_id in task_ids:
-            try:
-                task = Task.get_task(task_id=task_id)
-                tasks.append(
-                    {
-                        "id": task.id,
-                        "name": task.name,
-                        "status": task.status,
-                        "project": task.get_project_name(),
-                        "created": str(task.data.created),
-                        "tags": list(task.data.tags) if task.data.tags else [],
-                    }
-                )
-            except Exception as e:
-                # If we can't get a specific task, include the error but continue
-                tasks.append({"id": task_id, "error": f"Failed to get task details: {e!s}"})
-
-        return tasks
+        tasks = _query_task_dicts(project_name=project_name, status=status, tags=tags)
+        return [
+            {
+                "id": t["id"],
+                "name": t["name"],
+                "status": t["status"],
+                "project": t["project"],
+                "created": t["created"],
+                "tags": t["tags"],
+            }
+            for t in tasks
+        ]
     except Exception as e:
         return [{"error": f"Failed to list tasks: {e!s}"}]
 
@@ -254,30 +311,18 @@ async def find_experiment_in_project(
 ) -> list[dict[str, Any]]:
     """Find experiments in a specific project by name pattern."""
     try:
-        # Get task IDs for the project
-        task_ids = Task.query_tasks(project_name=project_name)
-
-        matching_experiments = []
-        pattern_lower = experiment_pattern.lower()
-
-        for task_id in task_ids:
-            try:
-                task = Task.get_task(task_id=task_id)
-                if pattern_lower in task.name.lower():
-                    matching_experiments.append(
-                        {
-                            "id": task.id,
-                            "name": task.name,
-                            "status": task.status,
-                            "project": task.get_project_name(),
-                            "created": str(task.data.created),
-                        }
-                    )
-            except Exception:
-                # Skip tasks we can't access - could be permissions or API issues
-                pass
-
-        return matching_experiments
+        # task_name matching happens server-side, so only matching tasks come back.
+        tasks = _query_task_dicts(project_name=project_name, task_name=experiment_pattern)
+        return [
+            {
+                "id": t["id"],
+                "name": t["name"],
+                "status": t["status"],
+                "project": t["project"],
+                "created": t["created"],
+            }
+            for t in tasks
+        ]
     except Exception as e:
         return [{"error": f"Failed to find experiments: {e!s}"}]
 
@@ -302,18 +347,19 @@ async def list_projects() -> list[dict[str, Any]]:
 async def get_project_stats(project_name: str) -> dict[str, Any]:
     """Get project statistics and task counts."""
     try:
-        tasks = Task.query_tasks(project_name=project_name)
+        tasks = _query_task_dicts(project_name=project_name)
 
-        status_counts = {}
+        status_counts: dict[str, int] = {}
         for task in tasks:
-            status = task.status
-            status_counts[status] = status_counts.get(status, 0) + 1
+            status = task["status"]
+            if status:
+                status_counts[status] = status_counts.get(status, 0) + 1
 
         return {
             "project_name": project_name,
             "total_tasks": len(tasks),
             "status_breakdown": status_counts,
-            "task_types": list(set(task.type for task in tasks if hasattr(task, "type"))),
+            "task_types": sorted({task["type"] for task in tasks if task["type"]}),
         }
     except Exception as e:
         return {"error": f"Failed to get project stats: {e!s}"}
@@ -364,44 +410,22 @@ async def compare_tasks(task_ids: list[str], metrics: list[str] | None = None) -
 async def search_tasks(query: str, project_name: str | None = None) -> list[dict[str, Any]]:
     """Search tasks by name, tags, or description."""
     try:
-        # Task.query_tasks returns task IDs (strings), not task objects
-        task_ids = Task.query_tasks(project_name=project_name)
-
-        matching_tasks = []
-        query_lower = query.lower()
-
-        for task_id in task_ids:
-            try:
-                task = Task.get_task(task_id=task_id)
-
-                # Check if the task matches the search query
-                task_name = task.name.lower()
-                task_comment = getattr(task, "comment", "") or ""
-                task_tags = list(task.data.tags) if task.data.tags else []
-
-                if (
-                    query_lower in task_name
-                    or (task_comment and query_lower in task_comment.lower())
-                    or any(query_lower in tag.lower() for tag in task_tags)
-                ):
-                    matching_tasks.append(
-                        {
-                            "id": task.id,
-                            "name": task.name,
-                            "status": task.status,
-                            "project": task.get_project_name(),
-                            "created": str(task.data.created),
-                            "tags": task_tags,
-                            "comment": task_comment,
-                        }
-                    )
-            except Exception as e:
-                # If we can't get a specific task, skip it but log the error
-                matching_tasks.append(
-                    {"id": task_id, "error": f"Failed to get task details: {e!s}"}
-                )
-
-        return matching_tasks
+        # Match the query as a literal substring (case-insensitive) against
+        # name/comment/tags server-side, so we never hydrate non-matching tasks.
+        pattern = f"(?i){re.escape(query)}"
+        tasks = _query_task_dicts(project_name=project_name, any_pattern=pattern)
+        return [
+            {
+                "id": t["id"],
+                "name": t["name"],
+                "status": t["status"],
+                "project": t["project"],
+                "created": t["created"],
+                "tags": t["tags"],
+                "comment": t["comment"],
+            }
+            for t in tasks
+        ]
     except Exception as e:
         return [{"error": f"Failed to search tasks: {e!s}"}]
 
