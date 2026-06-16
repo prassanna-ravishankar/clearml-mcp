@@ -7,6 +7,35 @@ import pytest
 from clearml_mcp import clearml_mcp
 
 
+def _make_query_tasks(task_dicts):
+    """Build a fake Task.query_tasks that mimics the real SDK contract.
+
+    The real ``Task.query_tasks`` returns bare ID strings unless
+    ``additional_return_fields`` is passed, in which case it returns a list of
+    dicts with the requested fields hydrated in a single bulk call. These tests
+    always exercise the bulk path, so the fake returns the provided dicts and
+    fails loudly if a caller forgets ``additional_return_fields`` (which would
+    have forced the old, broken N+1 ``get_task`` hydration).
+    """
+
+    def query_tasks(*, additional_return_fields=None, **_kwargs: object):
+        if not additional_return_fields:
+            raise AssertionError(
+                "query_tasks called without additional_return_fields - "
+                "this is the N+1 / 'str'.status bug from issue #6"
+            )
+        return list(task_dicts)
+
+    return query_tasks
+
+
+def _fake_project(project_id, name):
+    proj = Mock()
+    proj.id = project_id
+    proj.name = name
+    return proj
+
+
 class TestClearMLConnection:
     """Test ClearML connection initialization behavior."""
 
@@ -123,71 +152,85 @@ class TestTaskListing:
     @pytest.mark.asyncio
     @patch("clearml_mcp.clearml_mcp.Task")
     async def test_lists_all_tasks_without_filters(self, mock_task):
-        """list_tasks returns all tasks when no filters applied."""
-        # Arrange: Mock the Task.query_tasks to return task IDs
-        mock_task.query_tasks.return_value = ["task_1", "task_2"]
-
-        def mock_get_task(task_id):
-            if task_id == "task_1":
-                task = Mock()
-                task.id = "task_1"
-                task.name = "Experiment 1"
-                task.status = "completed"
-                task.get_project_name.return_value = "Project A"
-                task.data.created = "2024-01-01T00:00:00Z"
-                return task
-            task = Mock()
-            task.id = "task_2"
-            task.name = "Experiment 2"
-            task.status = "running"
-            task.get_project_name.return_value = "Project B"
-            task.data.created = "2024-01-02T00:00:00Z"
-            return task
-
-        mock_task.get_task.side_effect = mock_get_task
+        """list_tasks returns all tasks from a single bulk query."""
+        mock_task.query_tasks.side_effect = _make_query_tasks(
+            [
+                {
+                    "id": "task_1",
+                    "name": "Experiment 1",
+                    "status": "completed",
+                    "type": "training",
+                    "comment": "",
+                    "created": "2024-01-01T00:00:00Z",
+                    "project": "proj_a",
+                    "tags": [],
+                },
+                {
+                    "id": "task_2",
+                    "name": "Experiment 2",
+                    "status": "running",
+                    "type": "training",
+                    "comment": "",
+                    "created": "2024-01-02T00:00:00Z",
+                    "project": "proj_b",
+                    "tags": [],
+                },
+            ]
+        )
+        mock_task.get_projects.return_value = [
+            _fake_project("proj_a", "Project A"),
+            _fake_project("proj_b", "Project B"),
+        ]
 
         result = await clearml_mcp.list_tasks.fn()
 
         assert len(result) == 2
         assert result[0]["id"] == "task_1"
+        assert result[0]["project"] == "Project A"
         assert result[1]["id"] == "task_2"
+        assert result[1]["project"] == "Project B"
+        # Regression: must NOT hydrate tasks one-by-one (issue #6 N+1).
+        mock_task.get_task.assert_not_called()
 
     @pytest.mark.asyncio
     @patch("clearml_mcp.clearml_mcp.Task")
     async def test_filters_tasks_by_project_and_status(self, mock_task):
-        """list_tasks correctly applies project and status filters."""
-        # Arrange
-        mock_task.query_tasks.return_value = ["task_1"]
+        """list_tasks pushes project and status filters into the bulk query."""
+        mock_task.query_tasks.side_effect = _make_query_tasks(
+            [
+                {
+                    "id": "task_1",
+                    "name": "Task task_1",
+                    "status": "completed",
+                    "type": "training",
+                    "comment": "",
+                    "created": "2024-01-01T00:00:00Z",
+                    "project": "proj_1",
+                    "tags": [],
+                }
+            ]
+        )
+        mock_task.get_projects.return_value = [_fake_project("proj_1", "Filtered Project")]
 
-        def mock_get_task(task_id):
-            task = Mock()
-            task.id = task_id
-            task.name = f"Task {task_id}"
-            task.status = "completed"
-            task.get_project_name.return_value = "Filtered Project"
-            task.data.created = "2024-01-01T00:00:00Z"
-            task.data.tags = []
-            return task
-
-        mock_task.get_task.side_effect = mock_get_task
-
-        # Act
         result = await clearml_mcp.list_tasks.fn(
             project_name="Filtered Project", status="completed"
         )
 
-        # Assert: Verify filters were passed to query_tasks
-        mock_task.query_tasks.assert_called_once_with(
-            project_name="Filtered Project", task_filter={"status": ["completed"]}, tags=None
-        )
+        # The single bulk call requests fields server-side and filters by status.
+        _, kwargs = mock_task.query_tasks.call_args
+        assert kwargs["project_name"] == "Filtered Project"
+        assert kwargs["additional_return_fields"]
+        assert kwargs["task_filter"] == {"status": ["completed"]}
         assert len(result) == 1
         assert result[0]["status"] == "completed"
+        assert result[0]["project"] == "Filtered Project"
+        mock_task.get_task.assert_not_called()
 
     @pytest.mark.asyncio
     @patch("clearml_mcp.clearml_mcp.Task")
     async def test_handles_empty_task_list(self, mock_task):
         """list_tasks handles empty results gracefully."""
-        mock_task.query_tasks.return_value = []
+        mock_task.query_tasks.side_effect = _make_query_tasks([])
 
         result = await clearml_mcp.list_tasks.fn()
 
@@ -204,36 +247,6 @@ class TestTaskListing:
         assert len(result) == 1
         assert "error" in result[0]
         assert "Failed to list tasks" in result[0]["error"]
-
-    @pytest.mark.asyncio
-    @patch("clearml_mcp.clearml_mcp.Task")
-    async def test_handles_individual_task_retrieval_failure(self, mock_task):
-        """list_tasks handles failures when retrieving individual tasks."""
-        # Arrange: Query succeeds but individual task retrieval fails
-        mock_task.query_tasks.return_value = ["task_1", "task_2"]
-
-        def mock_get_task(task_id):
-            if task_id == "task_1":
-                raise Exception("Task access denied")
-            task = Mock()
-            task.id = "task_2"
-            task.name = "Working Task"
-            task.status = "completed"
-            task.get_project_name.return_value = "Project"
-            task.data.created = "2024-01-01T00:00:00Z"
-            task.data.tags = []
-            return task
-
-        mock_task.get_task.side_effect = mock_get_task
-
-        result = await clearml_mcp.list_tasks.fn()
-
-        assert len(result) == 2
-        assert "error" in result[0]
-        assert result[0]["id"] == "task_1"
-        # Second task should have full details since it succeeded
-        assert result[1]["id"] == "task_2"
-        assert result[1]["name"] == "Working Task"
 
 
 class TestTaskParameters:
@@ -674,72 +687,92 @@ class TestProjectSearch:
     @pytest.mark.asyncio
     @patch("clearml_mcp.clearml_mcp.Task")
     async def test_find_experiment_in_project_returns_matching_experiments(self, mock_task):
-        """find_experiment_in_project returns experiments matching the pattern."""
-        # Arrange
-        mock_task.query_tasks.return_value = ["task_1", "task_2", "task_3"]
+        """find_experiment_in_project matches the pattern server-side."""
+        # The server-side task_name filter only returns the matching tasks.
+        mock_task.query_tasks.side_effect = _make_query_tasks(
+            [
+                {
+                    "id": "task_1",
+                    "name": "Training Experiment",
+                    "status": "completed",
+                    "type": "training",
+                    "comment": "",
+                    "created": "2024-01-01T00:00:00Z",
+                    "project": "proj_1",
+                    "tags": [],
+                },
+                {
+                    "id": "task_2",
+                    "name": "Validation Experiment",
+                    "status": "running",
+                    "type": "testing",
+                    "comment": "",
+                    "created": "2024-01-02T00:00:00Z",
+                    "project": "proj_1",
+                    "tags": [],
+                },
+            ]
+        )
+        mock_task.get_projects.return_value = [_fake_project("proj_1", "ML Project")]
 
-        def mock_get_task(task_id):
-            if task_id == "task_1":
-                task = Mock()
-                task.id = "task_1"
-                task.name = "Training Experiment"
-                task.status = "completed"
-                task.get_project_name.return_value = "ML Project"
-                task.data.created = "2024-01-01T00:00:00Z"
-                return task
-            if task_id == "task_2":
-                task = Mock()
-                task.id = "task_2"
-                task.name = "Validation Experiment"
-                task.status = "running"
-                task.get_project_name.return_value = "ML Project"
-                task.data.created = "2024-01-02T00:00:00Z"
-                return task
-            # task_3
-            task = Mock()
-            task.id = "task_3"
-            task.name = "Data Processing"
-            task.status = "completed"
-            task.get_project_name.return_value = "ML Project"
-            task.data.created = "2024-01-03T00:00:00Z"
-            return task
-
-        mock_task.get_task.side_effect = mock_get_task
-
-        # Act
         result = await clearml_mcp.find_experiment_in_project.fn("ML Project", "experiment")
 
-        # Assert
         assert len(result) == 2
         assert result[0]["name"] == "Training Experiment"
         assert result[1]["name"] == "Validation Experiment"
+        # The pattern is matched server-side via task_name, not by hydrating each task.
+        # It is built as a case-insensitive literal-substring regex.
+        _, kwargs = mock_task.query_tasks.call_args
+        assert kwargs["task_name"] == "(?i)experiment"
+        mock_task.get_task.assert_not_called()
 
     @pytest.mark.asyncio
     @patch("clearml_mcp.clearml_mcp.Task")
-    async def test_find_experiment_handles_task_access_failure(self, mock_task):
-        """find_experiment_in_project handles individual task access failures."""
-        # Arrange
-        mock_task.query_tasks.return_value = ["task_1", "task_2"]
+    async def test_find_experiment_escapes_regex_special_characters(self, mock_task):
+        """find_experiment_in_project matches the pattern literally, not as a regex.
 
-        def mock_get_task(task_id):
-            if task_id == "task_1":
-                raise Exception("Task access denied")
-            task = Mock()
-            task.id = "task_2"
-            task.name = "Accessible Experiment"
-            task.status = "completed"
-            task.get_project_name.return_value = "ML Project"
-            task.data.created = "2024-01-02T00:00:00Z"
-            return task
+        ClearML treats task_name as a regex, so metacharacters must be escaped:
+        "a.b" should match only the literal "a.b" (not "axb"), and "exp[1]" must
+        not error the query.
+        """
+        mock_task.query_tasks.side_effect = _make_query_tasks([])
+        mock_task.get_projects.return_value = []
 
-        mock_task.get_task.side_effect = mock_get_task
+        result = await clearml_mcp.find_experiment_in_project.fn("ML Project", "exp[1].a")
 
-        # Act
+        assert result == []
+        _, kwargs = mock_task.query_tasks.call_args
+        # Special characters are escaped (literal match) and case-insensitive.
+        assert kwargs["task_name"] == r"(?i)exp\[1\]\.a"
+        mock_task.get_task.assert_not_called()
+
+    @pytest.mark.asyncio
+    @patch("clearml_mcp.clearml_mcp.Task")
+    async def test_find_experiment_is_case_insensitive(self, mock_task):
+        """find_experiment_in_project preserves case-insensitive matching."""
+        mock_task.query_tasks.side_effect = _make_query_tasks(
+            [
+                {
+                    "id": "task_1",
+                    "name": "Training EXPERIMENT",
+                    "status": "completed",
+                    "type": "training",
+                    "comment": "",
+                    "created": "2024-01-01T00:00:00Z",
+                    "project": "proj_1",
+                    "tags": [],
+                }
+            ]
+        )
+        mock_task.get_projects.return_value = [_fake_project("proj_1", "ML Project")]
+
         result = await clearml_mcp.find_experiment_in_project.fn("ML Project", "experiment")
 
-        # Assert: Should skip failed task and return accessible one
+        # The (?i) prefix makes the server match regardless of case.
+        _, kwargs = mock_task.query_tasks.call_args
+        assert kwargs["task_name"].startswith("(?i)")
         assert len(result) == 1
-        assert result[0]["name"] == "Accessible Experiment"
+        assert result[0]["name"] == "Training EXPERIMENT"
 
     @pytest.mark.asyncio
     @patch("clearml_mcp.clearml_mcp.Task")
@@ -817,9 +850,8 @@ class TestProjectOperations:
     @pytest.mark.asyncio
     @patch("clearml_mcp.clearml_mcp.Task")
     async def test_calculates_project_statistics(self, mock_task):
-        """get_project_stats returns project statistics correctly."""
-        # Arrange: Create mock tasks with different statuses
-        tasks = []
+        """get_project_stats aggregates status counts from bulk dict results."""
+        # query_tasks returns dicts (one bulk call), not objects with .status.
         statuses = [
             "created",
             "created",
@@ -839,25 +871,34 @@ class TestProjectOperations:
             "completed",
             "completed",
         ]
+        task_dicts = [
+            {
+                "id": f"task_{i}",
+                "name": f"Task {i}",
+                "status": status,
+                "type": "training" if i % 2 == 0 else "inference",
+                "comment": "",
+                "created": "2024-01-01T00:00:00Z",
+                "project": "proj_1",
+                "tags": [],
+            }
+            for i, status in enumerate(statuses)
+        ]
+        mock_task.query_tasks.side_effect = _make_query_tasks(task_dicts)
+        mock_task.get_projects.return_value = [_fake_project("proj_1", "Test Project")]
 
-        for i, status in enumerate(statuses):
-            task = Mock()
-            task.status = status
-            task.type = "training" if i % 2 == 0 else "inference"
-            tasks.append(task)
-
-        mock_task.query_tasks.return_value = tasks
-
-        # Act
         result = await clearml_mcp.get_project_stats.fn("Test Project")
 
-        # Assert
+        assert "error" not in result
         assert result["project_name"] == "Test Project"
         assert result["total_tasks"] == 17
         assert result["status_breakdown"]["created"] == 2
         assert result["status_breakdown"]["in_progress"] == 3
         assert result["status_breakdown"]["completed"] == 4
         assert result["status_breakdown"]["failed"] == 2
+        assert sorted(result["task_types"]) == ["inference", "training"]
+        # Regression: no per-task hydration.
+        mock_task.get_task.assert_not_called()
 
     @pytest.mark.asyncio
     @patch("clearml_mcp.clearml_mcp.Task")
@@ -975,132 +1016,61 @@ class TestTaskSearch:
 
     @pytest.mark.asyncio
     @patch("clearml_mcp.clearml_mcp.Task")
-    async def test_searches_by_task_name(self, mock_task):
-        """search_tasks finds tasks by name matching."""
-        # Arrange
-        mock_task.query_tasks.return_value = ["task_1", "task_2"]
+    async def test_matches_query_server_side(self, mock_task):
+        """search_tasks pushes the substring match into the bulk query."""
+        # The server matches name/comment/tags, so only matching tasks come back.
+        mock_task.query_tasks.side_effect = _make_query_tasks(
+            [
+                {
+                    "id": "task_1",
+                    "name": "Training Neural Network",
+                    "status": "completed",
+                    "type": "training",
+                    "comment": "Deep learning experiment",
+                    "created": "2024-01-01T00:00:00Z",
+                    "project": "proj_1",
+                    "tags": ["training", "neural"],
+                }
+            ]
+        )
+        mock_task.get_projects.return_value = [_fake_project("proj_1", "ML Project")]
 
-        def mock_get_task(task_id):
-            if task_id == "task_1":
-                task = Mock()
-                task.id = "task_1"
-                task.name = "Training Neural Network"
-                task.status = "completed"
-                task.get_project_name.return_value = "ML Project"
-                task.data.created = "2024-01-01T00:00:00Z"
-                task.data.tags = ["training", "neural"]
-                task.comment = "Deep learning experiment"
-                return task
-            task = Mock()
-            task.id = "task_2"
-            task.name = "Data Preprocessing"
-            task.status = "completed"
-            task.get_project_name.return_value = "ML Project"
-            task.data.created = "2024-01-02T00:00:00Z"
-            task.data.tags = ["preprocessing"]
-            task.comment = "Clean and prepare data"
-            return task
-
-        mock_task.get_task.side_effect = mock_get_task
-
-        # Act
         result = await clearml_mcp.search_tasks.fn("neural")
 
-        # Assert
         assert len(result) == 1
         assert result[0]["name"] == "Training Neural Network"
         assert result[0]["id"] == "task_1"
+        assert result[0]["project"] == "ML Project"
+        # Regression: matching is a single bulk query (server-side _any_), no N+1.
+        _, kwargs = mock_task.query_tasks.call_args
+        any_filter = kwargs["task_filter"]["_any_"]
+        assert "neural" in any_filter["pattern"]
+        assert set(any_filter["fields"]) == {"name", "comment", "tags"}
+        mock_task.get_task.assert_not_called()
 
     @pytest.mark.asyncio
     @patch("clearml_mcp.clearml_mcp.Task")
-    async def test_searches_by_tags_and_comments(self, mock_task):
-        """search_tasks finds tasks by tags and comments."""
-        # Arrange
-        mock_task.query_tasks.return_value = ["task_1"]
+    async def test_escapes_regex_special_characters(self, mock_task):
+        """search_tasks treats the query as a literal substring, not a regex."""
+        mock_task.query_tasks.side_effect = _make_query_tasks([])
+        mock_task.get_projects.return_value = []
 
-        def mock_get_task(task_id):
-            task = Mock()
-            task.id = "task_1"
-            task.name = "Experiment"
-            task.status = "completed"
-            task.get_project_name.return_value = "ML Project"
-            task.data.created = "2024-01-01T00:00:00Z"
-            task.data.tags = ["production", "v2.0"]
-            task.comment = "Optimized for speed"
-            return task
+        await clearml_mcp.search_tasks.fn("a.b(c)")
 
-        mock_task.get_task.side_effect = mock_get_task
-
-        # Act: Search by tag
-        result = await clearml_mcp.search_tasks.fn("production")
-
-        # Assert
-        assert len(result) == 1
-        assert result[0]["tags"] == ["production", "v2.0"]
-
-        # Act: Search by comment
-        result = await clearml_mcp.search_tasks.fn("optimized")
-
-        # Assert
-        assert len(result) == 1
-        assert result[0]["comment"] == "Optimized for speed"
+        _, kwargs = mock_task.query_tasks.call_args
+        # Special chars are escaped so they match literally rather than as regex.
+        assert r"a\.b\(c\)" in kwargs["task_filter"]["_any_"]["pattern"]
 
     @pytest.mark.asyncio
     @patch("clearml_mcp.clearml_mcp.Task")
     async def test_returns_empty_list_when_no_matches(self, mock_task):
-        """search_tasks returns empty list when no tasks match."""
-        # Arrange
-        mock_task.query_tasks.return_value = ["task_1"]
+        """search_tasks returns empty list when the server finds no matches."""
+        mock_task.query_tasks.side_effect = _make_query_tasks([])
+        mock_task.get_projects.return_value = []
 
-        def mock_get_task(task_id):
-            task = Mock()
-            task.id = "task_1"
-            task.name = "Different Task"
-            task.status = "completed"
-            task.get_project_name.return_value = "ML Project"
-            task.data.created = "2024-01-01T00:00:00Z"
-            task.data.tags = ["other"]
-            task.comment = "Nothing relevant"
-            return task
-
-        mock_task.get_task.side_effect = mock_get_task
-
-        # Act
         result = await clearml_mcp.search_tasks.fn("nonexistent")
 
-        # Assert
         assert result == []
-
-    @pytest.mark.asyncio
-    @patch("clearml_mcp.clearml_mcp.Task")
-    async def test_search_tasks_handles_individual_task_failures(self, mock_task):
-        """search_tasks handles individual task access failures."""
-        # Arrange
-        mock_task.query_tasks.return_value = ["task_1", "task_2"]
-
-        def mock_get_task(task_id):
-            if task_id == "task_1":
-                raise Exception("Task access denied")
-            task = Mock()
-            task.id = "task_2"
-            task.name = "Accessible Task"
-            task.status = "completed"
-            task.get_project_name.return_value = "ML Project"
-            task.data.created = "2024-01-02T00:00:00Z"
-            task.data.tags = ["accessible"]
-            task.comment = "This works"
-            return task
-
-        mock_task.get_task.side_effect = mock_get_task
-
-        # Act
-        result = await clearml_mcp.search_tasks.fn("task")
-
-        # Assert: Should include error for failed task and success for accessible task
-        assert len(result) == 2
-        assert "error" in result[0]
-        assert result[0]["id"] == "task_1"
-        assert result[1]["name"] == "Accessible Task"
 
     @pytest.mark.asyncio
     @patch("clearml_mcp.clearml_mcp.Task")
@@ -1117,31 +1087,29 @@ class TestTaskSearch:
     @pytest.mark.asyncio
     @patch("clearml_mcp.clearml_mcp.Task")
     async def test_search_tasks_handles_missing_comment_and_tags(self, mock_task):
-        """search_tasks handles tasks with missing comment and tags."""
-        # Arrange
-        mock_task.query_tasks.return_value = ["task_1"]
+        """search_tasks normalizes tasks with missing comment and tags."""
+        mock_task.query_tasks.side_effect = _make_query_tasks(
+            [
+                {
+                    "id": "task_1",
+                    "name": "Simple Task",
+                    "status": "completed",
+                    "type": "training",
+                    "comment": None,
+                    "created": "2024-01-01T00:00:00Z",
+                    "project": "proj_1",
+                    "tags": None,
+                }
+            ]
+        )
+        mock_task.get_projects.return_value = [_fake_project("proj_1", "ML Project")]
 
-        def mock_get_task(task_id):
-            task = Mock()
-            task.id = "task_1"
-            task.name = "Simple Task"
-            task.status = "completed"
-            task.get_project_name.return_value = "ML Project"
-            task.data.created = "2024-01-01T00:00:00Z"
-            task.data.tags = None  # No tags
-            task.comment = None  # No comment
-            return task
-
-        mock_task.get_task.side_effect = mock_get_task
-
-        # Act
         result = await clearml_mcp.search_tasks.fn("simple")
 
-        # Assert
         assert len(result) == 1
         assert result[0]["name"] == "Simple Task"
         assert result[0]["tags"] == []
-        assert result[0]["comment"] == ""  # getattr returns "" for None comment
+        assert result[0]["comment"] == ""
 
 
 class TestMainEntryPoint:
