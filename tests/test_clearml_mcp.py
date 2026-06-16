@@ -721,9 +721,58 @@ class TestProjectSearch:
         assert result[0]["name"] == "Training Experiment"
         assert result[1]["name"] == "Validation Experiment"
         # The pattern is matched server-side via task_name, not by hydrating each task.
+        # It is built as a case-insensitive literal-substring regex.
         _, kwargs = mock_task.query_tasks.call_args
-        assert kwargs["task_name"] == "experiment"
+        assert kwargs["task_name"] == "(?i)experiment"
         mock_task.get_task.assert_not_called()
+
+    @pytest.mark.asyncio
+    @patch("clearml_mcp.clearml_mcp.Task")
+    async def test_find_experiment_escapes_regex_special_characters(self, mock_task):
+        """find_experiment_in_project matches the pattern literally, not as a regex.
+
+        ClearML treats task_name as a regex, so metacharacters must be escaped:
+        "a.b" should match only the literal "a.b" (not "axb"), and "exp[1]" must
+        not error the query.
+        """
+        mock_task.query_tasks.side_effect = _make_query_tasks([])
+        mock_task.get_projects.return_value = []
+
+        result = await clearml_mcp.find_experiment_in_project.fn("ML Project", "exp[1].a")
+
+        assert result == []
+        _, kwargs = mock_task.query_tasks.call_args
+        # Special characters are escaped (literal match) and case-insensitive.
+        assert kwargs["task_name"] == r"(?i)exp\[1\]\.a"
+        mock_task.get_task.assert_not_called()
+
+    @pytest.mark.asyncio
+    @patch("clearml_mcp.clearml_mcp.Task")
+    async def test_find_experiment_is_case_insensitive(self, mock_task):
+        """find_experiment_in_project preserves case-insensitive matching."""
+        mock_task.query_tasks.side_effect = _make_query_tasks(
+            [
+                {
+                    "id": "task_1",
+                    "name": "Training EXPERIMENT",
+                    "status": "completed",
+                    "type": "training",
+                    "comment": "",
+                    "created": "2024-01-01T00:00:00Z",
+                    "project": "proj_1",
+                    "tags": [],
+                }
+            ]
+        )
+        mock_task.get_projects.return_value = [_fake_project("proj_1", "ML Project")]
+
+        result = await clearml_mcp.find_experiment_in_project.fn("ML Project", "experiment")
+
+        # The (?i) prefix makes the server match regardless of case.
+        _, kwargs = mock_task.query_tasks.call_args
+        assert kwargs["task_name"].startswith("(?i)")
+        assert len(result) == 1
+        assert result[0]["name"] == "Training EXPERIMENT"
 
     @pytest.mark.asyncio
     @patch("clearml_mcp.clearml_mcp.Task")

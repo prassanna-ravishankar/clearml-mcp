@@ -26,6 +26,17 @@ def initialize_clearml_connection() -> None:
 _TASK_FIELDS = ("id", "name", "status", "type", "comment", "created", "project", "tags")
 
 
+def _literal_ci_regex(query: str) -> str:
+    """Build a case-insensitive regex that matches ``query`` as a literal substring.
+
+    ClearML matches ``task_name`` and ``_any_`` patterns as regular expressions
+    server-side, so user input must be escaped to match literally (e.g. ``a.b``
+    matches the literal string, ``[`` does not error the query) and prefixed with
+    ``(?i)`` to preserve the case-insensitive behaviour callers expect.
+    """
+    return f"(?i){re.escape(query)}"
+
+
 def _project_id_to_name(task_dicts: list[dict[str, Any]]) -> dict[str, str]:
     """Build a project-id -> project-name map for the projects referenced by tasks.
 
@@ -311,8 +322,11 @@ async def find_experiment_in_project(
 ) -> list[dict[str, Any]]:
     """Find experiments in a specific project by name pattern."""
     try:
-        # task_name matching happens server-side, so only matching tasks come back.
-        tasks = _query_task_dicts(project_name=project_name, task_name=experiment_pattern)
+        # Match the pattern as a literal, case-insensitive substring server-side
+        # (ClearML treats task_name as a regex), so only matching tasks come back.
+        tasks = _query_task_dicts(
+            project_name=project_name, task_name=_literal_ci_regex(experiment_pattern)
+        )
         return [
             {
                 "id": t["id"],
@@ -412,8 +426,7 @@ async def search_tasks(query: str, project_name: str | None = None) -> list[dict
     try:
         # Match the query as a literal substring (case-insensitive) against
         # name/comment/tags server-side, so we never hydrate non-matching tasks.
-        pattern = f"(?i){re.escape(query)}"
-        tasks = _query_task_dicts(project_name=project_name, any_pattern=pattern)
+        tasks = _query_task_dicts(project_name=project_name, any_pattern=_literal_ci_regex(query))
         return [
             {
                 "id": t["id"],
