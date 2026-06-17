@@ -1,3 +1,5 @@
+[![MseeP.ai Security Assessment Badge](https://mseep.net/pr/prassanna-ravishankar-clearml-mcp-badge.png)](https://mseep.ai/app/prassanna-ravishankar-clearml-mcp)
+
 # ClearML MCP Server
 
 ![ClearML MCP](https://raw.githubusercontent.com/prassanna-ravishankar/clearml-mcp/main/docs/clearml.png)
