@@ -1,6 +1,8 @@
 """ClearML MCP Server implementation."""
 
+import json
 import re
+from pathlib import Path
 from typing import Any, cast
 
 from clearml import Model, Task
@@ -176,6 +178,146 @@ async def get_task_metrics(task_id: str) -> dict[str, Any]:
         return metrics
     except Exception as e:
         return {"error": f"Failed to get task metrics: {e!s}"}
+
+
+def _plot_traces(plot_str: str | None) -> list[dict[str, Any]]:
+    """Parse a reported plot's serialized payload into its traces."""
+    if not plot_str:
+        return []
+    try:
+        parsed = json.loads(plot_str)
+    except (json.JSONDecodeError, TypeError) as err:
+        return [{"error": f"Failed to parse plot_str: {err!s}"}]
+    return [
+        {
+            "name": trace.get("name"),
+            "type": trace.get("type"),
+            "mode": trace.get("mode"),
+            "x": trace.get("x"),
+            "y": trace.get("y"),
+        }
+        for trace in parsed.get("data", [])
+    ]
+
+
+def _latest_reported_plots(task: Task, metric_pattern: str | None) -> dict[str, dict[str, Any]]:
+    """Collect the newest iteration of every (metric, variant) plot on a task.
+
+    Plots are reported per iteration, so the raw feed holds every historical copy
+    of the same curve; callers want the final one. ``metric_pattern`` is matched
+    against the metric name alone (so an anchored pattern still works) and against
+    ``"<metric>/<variant>"``.
+    """
+    pattern = re.compile(metric_pattern, re.IGNORECASE) if metric_pattern else None
+
+    latest: dict[tuple[str, str], dict[str, Any]] = {}
+    for entry in task.get_reported_plots():
+        metric = entry.get("metric", "")
+        variant = entry.get("variant", "")
+        if pattern and not (pattern.search(metric) or pattern.search(f"{metric}/{variant}")):
+            continue
+        key = (metric, variant)
+        if key not in latest or entry.get("iter", 0) >= latest[key].get("iter", -1):
+            latest[key] = entry
+
+    plots: dict[str, dict[str, Any]] = {}
+    for (metric, variant), entry in latest.items():
+        plots.setdefault(metric, {})[variant] = {
+            "iteration": entry.get("iter"),
+            "traces": _plot_traces(entry.get("plot_str")),
+        }
+    return plots
+
+
+def _compact_single_trace(plots: dict[str, dict[str, Any]]) -> dict[str, dict[str, Any]]:
+    """Reshape plots to ``{metric: {variant: {"x", "y"}}}``, keeping the first trace.
+
+    Variants with no data are dropped. Metrics whose name ends in ``/PR`` are true
+    precision-recall curves and also get ``recall``/``precision`` aliases; every
+    other metric keeps only the axis-agnostic keys, so a threshold-vs-accuracy
+    curve is never misread as a PR curve.
+    """
+    out: dict[str, dict[str, Any]] = {}
+    for metric, variants in plots.items():
+        is_pr_curve = metric.endswith("/PR")
+        variant_out: dict[str, Any] = {}
+        for variant, entry in variants.items():
+            traces = entry.get("traces", [])
+            x = traces[0].get("x", []) if traces else []
+            y = traces[0].get("y", []) if traces else []
+            if x:
+                shaped: dict[str, Any] = {"x": x, "y": y}
+                if is_pr_curve:
+                    shaped["recall"] = x
+                    shaped["precision"] = y
+                variant_out[variant] = shaped
+        if variant_out:
+            out[metric] = variant_out
+    return out
+
+
+@mcp.tool()
+async def list_plot_metrics(task_id: str) -> dict[str, Any]:
+    """List the metric and variant names of a task's non-scalar plots, without payload.
+
+    Cheap discovery step: call this before ``get_task_plots`` to learn the exact
+    names to filter on, rather than pulling every plot just to see what exists.
+    """
+    try:
+        task = Task.get_task(task_id=task_id)
+        variants: dict[str, set[str]] = {}
+        for entry in task.get_reported_plots():
+            variants.setdefault(entry.get("metric", ""), set()).add(entry.get("variant", ""))
+        return {
+            "metrics": sorted(variants),
+            "variants": {metric: sorted(names) for metric, names in variants.items()},
+        }
+    except Exception as e:
+        return {"error": f"Failed to list plot metrics: {e!s}"}
+
+
+@mcp.tool()
+async def get_task_plots(
+    task_id: str,
+    metric_pattern: str | None = None,
+    output_path: str | None = None,
+    *,
+    compact: bool = False,
+) -> dict[str, Any]:
+    """Get non-scalar reported plots (PR curves, histograms, confusion matrices).
+
+    Returns the latest reported iteration of each matching (metric, variant) pair.
+
+    Plot payloads are large - an unfiltered multi-variant pull can run to megabytes -
+    so prefer ``output_path``, which writes the full result to that file as JSON and
+    returns only the metric names and variant counts. Call ``list_plot_metrics``
+    first when the exact metric names are not already known.
+
+    ``metric_pattern`` is a case-insensitive regex matched against the metric name
+    alone and against ``"<metric>/<variant>"``, so an anchored pattern such as
+    ``"^Val/0_50_ahead/PR$"`` works.
+
+    ``compact`` reshapes each plot down to its first trace as ``{"x", "y"}`` arrays
+    instead of full trace metadata. Metrics ending in ``/PR`` additionally get
+    ``recall``/``precision`` aliases; other shapes are never relabelled, so read
+    ``x``/``y`` together with the metric name to know what the axes mean.
+    """
+    try:
+        task = Task.get_task(task_id=task_id)
+        plots = _latest_reported_plots(task, metric_pattern)
+        if compact:
+            plots = _compact_single_trace(plots)
+
+        if output_path:
+            Path(output_path).write_text(json.dumps(plots), encoding="utf-8")
+            return {
+                "output_path": output_path,
+                "metrics": list(plots),
+                "variant_counts": {metric: len(v) for metric, v in plots.items()},
+            }
+        return plots
+    except Exception as e:
+        return {"error": f"Failed to get task plots: {e!s}"}
 
 
 @mcp.tool()
