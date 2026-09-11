@@ -220,11 +220,25 @@ class TestTaskListing:
         _, kwargs = mock_task.query_tasks.call_args
         assert kwargs["project_name"] == "Filtered Project"
         assert kwargs["additional_return_fields"]
-        assert kwargs["task_filter"] == {"status": ["completed"]}
+        assert kwargs["task_filter"] == {
+            "order_by": ["-last_update"],
+            "status": ["completed"],
+        }
         assert len(result) == 1
         assert result[0]["status"] == "completed"
         assert result[0]["project"] == "Filtered Project"
         mock_task.get_task.assert_not_called()
+
+    @pytest.mark.asyncio
+    @patch("clearml_mcp.clearml_mcp.Task")
+    async def test_orders_tasks_by_most_recent_update(self, mock_task):
+        """list_tasks asks the backend for newest-first ordering even with no filters."""
+        mock_task.query_tasks.side_effect = _make_query_tasks([])
+
+        await clearml_mcp.list_tasks.fn()
+
+        _, kwargs = mock_task.query_tasks.call_args
+        assert kwargs["task_filter"]["order_by"] == ["-last_update"]
 
     @pytest.mark.asyncio
     @patch("clearml_mcp.clearml_mcp.Task")
