@@ -385,6 +385,114 @@ class TestTaskMetrics:
         assert "Failed to get task metrics" in result["error"]
 
 
+class TestTaskScript:
+    """Test task provenance and uncommitted-diff retrieval behavior."""
+
+    @staticmethod
+    def _task_with_diff(diff) -> Mock:
+        """Build a task mock whose script section mimics the ClearML SDK."""
+        task = Mock()
+        task.data.script = Mock(
+            repository="git@github.com:acme/repo.git",
+            branch="main",
+            version_num="abc123def",
+            entry_point="train.py",
+            working_dir="src",
+            diff=diff,
+        )
+        return task
+
+    @pytest.mark.asyncio
+    @patch("clearml_mcp.clearml_mcp.Task")
+    async def test_returns_provenance_and_inline_diff(self, mock_task):
+        """get_task_script returns repo/branch/commit plus the diff inline by default."""
+        mock_task.get_task.return_value = self._task_with_diff("diff --git a/a b/a\n")
+
+        result = await clearml_mcp.get_task_script.fn("task_123")
+
+        assert result["repository"] == "git@github.com:acme/repo.git"
+        assert result["branch"] == "main"
+        assert result["commit"] == "abc123def"
+        assert result["entry_point"] == "train.py"
+        assert result["working_dir"] == "src"
+        assert result["diff"] == "diff --git a/a b/a\n"
+        assert "output_path" not in result
+
+    @pytest.mark.asyncio
+    @patch("clearml_mcp.clearml_mcp.Task")
+    async def test_writes_diff_to_disk_when_output_path_given(self, mock_task, tmp_path):
+        """A large diff can be spilled to a file, keeping it out of the response."""
+        diff = "diff --git a/big b/big\n" + ("+x\n" * 1000)
+        mock_task.get_task.return_value = self._task_with_diff(diff)
+        out = tmp_path / "task.diff"
+
+        result = await clearml_mcp.get_task_script.fn("task_123", output_path=str(out))
+
+        assert out.read_text(encoding="utf-8") == diff
+        assert result["output_path"] == str(out)
+        assert result["diff_size_bytes"] == len(diff)
+        assert "diff" not in result
+
+    @pytest.mark.asyncio
+    @patch("clearml_mcp.clearml_mcp.Task")
+    async def test_reports_empty_diff_for_clean_working_tree(self, mock_task):
+        """A task run from a clean tree reports an empty diff, not None."""
+        mock_task.get_task.return_value = self._task_with_diff(None)
+
+        result = await clearml_mcp.get_task_script.fn("task_123")
+
+        assert result["diff"] == ""
+
+    @pytest.mark.asyncio
+    @patch("clearml_mcp.clearml_mcp.Task")
+    async def test_returns_error_on_script_retrieval_failure(self, mock_task):
+        """get_task_script returns an error when the task cannot be fetched."""
+        mock_task.get_task.side_effect = Exception("Task not found")
+
+        result = await clearml_mcp.get_task_script.fn("bad_id")
+
+        assert "Failed to get task script" in result["error"]
+
+
+class TestTaskConsoleLogs:
+    """Test console output retrieval behavior."""
+
+    @pytest.mark.asyncio
+    @patch("clearml_mcp.clearml_mcp.Task")
+    async def test_returns_console_lines_with_count(self, mock_task):
+        """get_task_console_logs returns the reported lines and their count."""
+        task = Mock()
+        task.get_reported_console_output.return_value = ["epoch 1", "epoch 2"]
+        mock_task.get_task.return_value = task
+
+        result = await clearml_mcp.get_task_console_logs.fn("task_123", number_of_reports=2)
+
+        assert result == {"logs": ["epoch 1", "epoch 2"], "count": 2}
+        task.get_reported_console_output.assert_called_once_with(number_of_reports=2)
+
+    @pytest.mark.asyncio
+    @patch("clearml_mcp.clearml_mcp.Task")
+    async def test_handles_task_without_console_output(self, mock_task):
+        """A task that reported nothing yields an empty log list."""
+        task = Mock()
+        task.get_reported_console_output.return_value = []
+        mock_task.get_task.return_value = task
+
+        result = await clearml_mcp.get_task_console_logs.fn("task_123")
+
+        assert result == {"logs": [], "count": 0}
+
+    @pytest.mark.asyncio
+    @patch("clearml_mcp.clearml_mcp.Task")
+    async def test_returns_error_on_console_retrieval_failure(self, mock_task):
+        """get_task_console_logs returns an error when the API call fails."""
+        mock_task.get_task.side_effect = Exception("API Error")
+
+        result = await clearml_mcp.get_task_console_logs.fn("task_123")
+
+        assert "Failed to get console logs" in result["error"]
+
+
 class TestTaskArtifacts:
     """Test task artifact retrieval behavior."""
 
