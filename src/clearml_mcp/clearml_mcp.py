@@ -68,8 +68,12 @@ def _query_task_dicts(
     fields fetched in one bulk call. ``task_name``, ``status`` and ``any_pattern``
     are all matched server-side so we never download every task just to filter
     client-side. ``any_pattern`` is a regex matched against any of ``any_fields``.
+
+    Results are ordered by most recently updated first: the backend's default
+    order is unspecified, so without ``order_by`` a caller browsing a large
+    project gets an arbitrary slice rather than the runs they just launched.
     """
-    task_filter: dict[str, Any] = {}
+    task_filter: dict[str, Any] = {"order_by": ["-last_update"]}
     if status:
         task_filter["status"] = [status]
     if any_pattern:
@@ -82,7 +86,7 @@ def _query_task_dicts(
             task_name=task_name,
             tags=tags,
             additional_return_fields=list(_TASK_FIELDS),
-            task_filter=task_filter or None,
+            task_filter=task_filter,
         ),
     )
     project_names = _project_id_to_name(raw)
@@ -127,7 +131,7 @@ async def list_tasks(
     status: str | None = None,
     tags: list[str] | None = None,
 ) -> list[dict[str, Any]]:
-    """List ClearML tasks with filters."""
+    """List ClearML tasks with filters, most recently updated first."""
     try:
         tasks = _query_task_dicts(project_name=project_name, status=status, tags=tags)
         return [
@@ -320,7 +324,7 @@ async def find_project_by_pattern(pattern: str) -> list[dict[str, Any]]:
 async def find_experiment_in_project(
     project_name: str, experiment_pattern: str
 ) -> list[dict[str, Any]]:
-    """Find experiments in a specific project by name pattern."""
+    """Find experiments in a project by name pattern, most recently updated first."""
     try:
         # Match the pattern as a literal, case-insensitive substring server-side
         # (ClearML treats task_name as a regex), so only matching tasks come back.
@@ -422,7 +426,7 @@ async def compare_tasks(task_ids: list[str], metrics: list[str] | None = None) -
 
 @mcp.tool()
 async def search_tasks(query: str, project_name: str | None = None) -> list[dict[str, Any]]:
-    """Search tasks by name, tags, or description."""
+    """Search tasks by name, tags, or description, most recently updated first."""
     try:
         # Match the query as a literal substring (case-insensitive) against
         # name/comment/tags server-side, so we never hydrate non-matching tasks.
