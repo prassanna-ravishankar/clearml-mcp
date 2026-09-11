@@ -41,6 +41,10 @@ credentials {
 
 Get your credentials from [ClearML Settings](https://app.clear.ml/settings).
 
+The server reads `~/.clearml/clearml.conf`, falling back to `~/clearml.conf` if that
+does not exist. Set `CLEARML_CONFIG_FILE` to point at a config file elsewhere; it
+always takes precedence.
+
 ### Installation
 
 ```bash
