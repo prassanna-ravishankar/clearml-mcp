@@ -1,6 +1,7 @@
 """ClearML MCP Server implementation."""
 
 import re
+from pathlib import Path
 from typing import Any, cast
 
 from clearml import Model, Task
@@ -176,6 +177,49 @@ async def get_task_metrics(task_id: str) -> dict[str, Any]:
         return metrics
     except Exception as e:
         return {"error": f"Failed to get task metrics: {e!s}"}
+
+
+@mcp.tool()
+async def get_task_script(task_id: str, output_path: str | None = None) -> dict[str, Any]:
+    """Get the repo, branch and commit a task ran from, plus its uncommitted diff.
+
+    The diff is the content of the ClearML UI's "UNCOMMITTED CHANGES" panel, and it
+    is what makes a run reproducible: repository and commit alone do not describe
+    the working tree the task actually executed. Diffs routinely run to tens of KB,
+    so pass ``output_path`` to write the diff to that file and get back its size
+    instead of the inline text.
+    """
+    try:
+        task = Task.get_task(task_id=task_id)
+        script = task.data.script
+        diff = script.diff or ""
+        result: dict[str, Any] = {
+            "repository": script.repository,
+            "branch": script.branch,
+            "commit": script.version_num,
+            "entry_point": script.entry_point,
+            "working_dir": script.working_dir,
+        }
+        if output_path:
+            Path(output_path).write_text(diff, encoding="utf-8")
+            result["output_path"] = output_path
+            result["diff_size_bytes"] = len(diff)
+        else:
+            result["diff"] = diff
+        return result
+    except Exception as e:
+        return {"error": f"Failed to get task script: {e!s}"}
+
+
+@mcp.tool()
+async def get_task_console_logs(task_id: str, number_of_reports: int = 100) -> dict[str, Any]:
+    """Get the most recent console log lines reported by a task."""
+    try:
+        task = Task.get_task(task_id=task_id)
+        logs = task.get_reported_console_output(number_of_reports=number_of_reports)
+        return {"logs": logs, "count": len(logs)}
+    except Exception as e:
+        return {"error": f"Failed to get console logs: {e!s}"}
 
 
 @mcp.tool()
