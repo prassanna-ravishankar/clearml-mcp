@@ -1,5 +1,6 @@
 """Behavioral tests for ClearML MCP server."""
 
+import json
 from unittest.mock import Mock, patch
 
 import pytest
@@ -27,6 +28,16 @@ def _make_query_tasks(task_dicts):
         return list(task_dicts)
 
     return query_tasks
+
+
+def _plot_entry(metric, variant, iteration, traces):
+    """Build one reported-plot record in the shape the ClearML API returns."""
+    return {
+        "metric": metric,
+        "variant": variant,
+        "iter": iteration,
+        "plot_str": json.dumps({"data": traces}),
+    }
 
 
 def _fake_project(project_id, name):
@@ -383,6 +394,149 @@ class TestTaskMetrics:
 
         assert "error" in result
         assert "Failed to get task metrics" in result["error"]
+
+
+class TestPlotMetrics:
+    """Test non-scalar plot discovery and retrieval behavior."""
+
+    @staticmethod
+    def _task_with_plots() -> Mock:
+        """Build a task reporting one PR curve over two iterations plus a histogram."""
+        task = Mock()
+        task.get_reported_plots.return_value = [
+            _plot_entry("Val/PR", "car", 1, [{"name": "pr", "x": [0.0], "y": [1.0]}]),
+            _plot_entry(
+                "Val/PR",
+                "car",
+                2,
+                [
+                    {
+                        "name": "pr",
+                        "type": "scatter",
+                        "mode": "lines",
+                        "x": [0.0, 0.5],
+                        "y": [1.0, 0.8],
+                    }
+                ],
+            ),
+            _plot_entry("Val/PR", "truck", 2, [{"name": "pr", "x": [0.0], "y": [0.9]}]),
+            _plot_entry("Train/HeadingErr", "all", 2, [{"name": "hist", "x": [1, 2], "y": [3, 4]}]),
+        ]
+        return task
+
+    @pytest.mark.asyncio
+    @patch("clearml_mcp.clearml_mcp.Task")
+    async def test_lists_metric_and_variant_names_without_payload(self, mock_task):
+        """list_plot_metrics names what exists and returns no plot data."""
+        mock_task.get_task.return_value = self._task_with_plots()
+
+        result = await clearml_mcp.list_plot_metrics.fn("task_123")
+
+        assert result["metrics"] == ["Train/HeadingErr", "Val/PR"]
+        assert result["variants"]["Val/PR"] == ["car", "truck"]
+        assert "plot_str" not in json.dumps(result)
+
+    @pytest.mark.asyncio
+    @patch("clearml_mcp.clearml_mcp.Task")
+    async def test_returns_only_latest_iteration_per_variant(self, mock_task):
+        """Plots are reported per iteration; only the newest copy is returned."""
+        mock_task.get_task.return_value = self._task_with_plots()
+
+        result = await clearml_mcp.get_task_plots.fn("task_123")
+
+        assert result["Val/PR"]["car"]["iteration"] == 2
+        assert result["Val/PR"]["car"]["traces"][0]["x"] == [0.0, 0.5]
+        assert result["Val/PR"]["car"]["traces"][0]["mode"] == "lines"
+
+    @pytest.mark.asyncio
+    @patch("clearml_mcp.clearml_mcp.Task")
+    async def test_filters_by_anchored_metric_pattern(self, mock_task):
+        """An anchored pattern matches the metric name alone."""
+        mock_task.get_task.return_value = self._task_with_plots()
+
+        result = await clearml_mcp.get_task_plots.fn("task_123", metric_pattern="^Val/PR$")
+
+        assert set(result) == {"Val/PR"}
+
+    @pytest.mark.asyncio
+    @patch("clearml_mcp.clearml_mcp.Task")
+    async def test_filters_on_metric_and_variant_pattern(self, mock_task):
+        """The pattern is also matched against "<metric>/<variant>"."""
+        mock_task.get_task.return_value = self._task_with_plots()
+
+        result = await clearml_mcp.get_task_plots.fn("task_123", metric_pattern="Val/PR/truck")
+
+        assert list(result["Val/PR"]) == ["truck"]
+
+    @pytest.mark.asyncio
+    @patch("clearml_mcp.clearml_mcp.Task")
+    async def test_compact_aliases_recall_precision_only_for_pr_curves(self, mock_task):
+        """Compact mode keeps x/y for every metric, adding PR aliases only for /PR."""
+        mock_task.get_task.return_value = self._task_with_plots()
+
+        result = await clearml_mcp.get_task_plots.fn("task_123", compact=True)
+
+        pr_curve = result["Val/PR"]["car"]
+        assert pr_curve["x"] == [0.0, 0.5]
+        assert pr_curve["recall"] == [0.0, 0.5]
+        assert pr_curve["precision"] == [1.0, 0.8]
+        histogram = result["Train/HeadingErr"]["all"]
+        assert histogram["x"] == [1, 2]
+        assert "recall" not in histogram
+
+    @pytest.mark.asyncio
+    @patch("clearml_mcp.clearml_mcp.Task")
+    async def test_writes_payload_to_disk_and_returns_summary(self, mock_task, tmp_path):
+        """output_path keeps the payload out of the response."""
+        mock_task.get_task.return_value = self._task_with_plots()
+        out = tmp_path / "plots.json"
+
+        result = await clearml_mcp.get_task_plots.fn("task_123", output_path=str(out))
+
+        assert result["output_path"] == str(out)
+        assert result["variant_counts"] == {"Val/PR": 2, "Train/HeadingErr": 1}
+        assert "traces" not in result
+        written = json.loads(out.read_text(encoding="utf-8"))
+        assert written["Val/PR"]["car"]["traces"][0]["y"] == [1.0, 0.8]
+
+    @pytest.mark.asyncio
+    @patch("clearml_mcp.clearml_mcp.Task")
+    async def test_reports_unparseable_plot_without_failing_the_call(self, mock_task):
+        """One corrupt plot payload does not fail the other plots."""
+        task = Mock()
+        task.get_reported_plots.return_value = [
+            {"metric": "Val/PR", "variant": "car", "iter": 1, "plot_str": "{not json"},
+        ]
+        mock_task.get_task.return_value = task
+
+        result = await clearml_mcp.get_task_plots.fn("task_123")
+
+        assert "Failed to parse plot_str" in result["Val/PR"]["car"]["traces"][0]["error"]
+
+    @pytest.mark.asyncio
+    @patch("clearml_mcp.clearml_mcp.Task")
+    async def test_handles_task_without_plots(self, mock_task):
+        """A task that reported no plots yields an empty result."""
+        task = Mock()
+        task.get_reported_plots.return_value = []
+        mock_task.get_task.return_value = task
+
+        assert await clearml_mcp.get_task_plots.fn("task_123") == {}
+        assert await clearml_mcp.list_plot_metrics.fn("task_123") == {
+            "metrics": [],
+            "variants": {},
+        }
+
+    @pytest.mark.asyncio
+    @patch("clearml_mcp.clearml_mcp.Task")
+    async def test_returns_error_on_plot_retrieval_failure(self, mock_task):
+        """Both plot tools report failures instead of raising."""
+        mock_task.get_task.side_effect = Exception("API Error")
+
+        assert "Failed to get task plots" in (await clearml_mcp.get_task_plots.fn("t"))["error"]
+        assert (
+            "Failed to list plot metrics" in (await clearml_mcp.list_plot_metrics.fn("t"))["error"]
+        )
 
 
 class TestTaskArtifacts:
