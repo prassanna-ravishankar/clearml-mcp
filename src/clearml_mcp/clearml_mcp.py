@@ -200,6 +200,36 @@ async def get_task_artifacts(task_id: str) -> dict[str, Any]:
 
 
 @mcp.tool()
+async def download_artifact(task_id: str, artifact_name: str) -> dict[str, Any]:
+    """Download one task artifact to local disk and return its local path.
+
+    Listing an artifact's URL is not enough to read it: artifact stores usually
+    sit behind credentials only the configured SDK holds, so the fetch has to go
+    through ClearML. Archive artifacts are extracted by the SDK, in which case the
+    returned path is the extracted directory rather than the downloaded file.
+    """
+    try:
+        task = Task.get_task(task_id=task_id)
+        artifacts = task.artifacts
+        if artifact_name not in artifacts:
+            return {
+                "error": (
+                    f"Artifact '{artifact_name}' not found on task {task_id}. "
+                    f"Available artifacts: {sorted(artifacts.keys())}"
+                )
+            }
+        artifact = artifacts[artifact_name]
+        return {
+            "local_path": artifact.get_local_copy(raise_on_error=True),
+            "type": artifact.type,
+            "url": artifact.url,
+            "size": artifact.size,
+        }
+    except Exception as e:
+        return {"error": f"Failed to download artifact: {e!s}"}
+
+
+@mcp.tool()
 async def get_model_info(task_id: str) -> dict[str, Any]:
     """Get model metadata and configuration."""
     try:

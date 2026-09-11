@@ -453,6 +453,64 @@ class TestTaskArtifacts:
         assert "Failed to get task artifacts" in result["error"]
 
 
+class TestArtifactDownload:
+    """Test artifact download behavior."""
+
+    @staticmethod
+    def _artifact(local_path) -> Mock:
+        """Build an artifact mock that returns a local copy on download."""
+        artifact = Mock()
+        artifact.type = "dataset"
+        artifact.url = "s3://bucket/data.zip"
+        artifact.size = 4096
+        artifact.get_local_copy.return_value = local_path
+        return artifact
+
+    @pytest.mark.asyncio
+    @patch("clearml_mcp.clearml_mcp.Task")
+    async def test_downloads_named_artifact(self, mock_task):
+        """download_artifact fetches through the SDK and returns the local path."""
+        artifact = self._artifact("/cache/clearml/extracted/data")
+        task = Mock()
+        task.artifacts = {"training_data": artifact}
+        mock_task.get_task.return_value = task
+
+        result = await clearml_mcp.download_artifact.fn("task_123", "training_data")
+
+        assert result["local_path"] == "/cache/clearml/extracted/data"
+        assert result["type"] == "dataset"
+        assert result["url"] == "s3://bucket/data.zip"
+        assert result["size"] == 4096
+        artifact.get_local_copy.assert_called_once_with(raise_on_error=True)
+
+    @pytest.mark.asyncio
+    @patch("clearml_mcp.clearml_mcp.Task")
+    async def test_lists_available_names_for_unknown_artifact(self, mock_task):
+        """An unknown artifact name reports what the task actually has."""
+        task = Mock()
+        task.artifacts = {"training_data": Mock(), "eval_data": Mock()}
+        mock_task.get_task.return_value = task
+
+        result = await clearml_mcp.download_artifact.fn("task_123", "nope")
+
+        assert "not found" in result["error"]
+        assert "'eval_data', 'training_data'" in result["error"]
+
+    @pytest.mark.asyncio
+    @patch("clearml_mcp.clearml_mcp.Task")
+    async def test_returns_error_when_download_fails(self, mock_task):
+        """A failed fetch is reported instead of raising."""
+        artifact = self._artifact(None)
+        artifact.get_local_copy.side_effect = Exception("403 Forbidden")
+        task = Mock()
+        task.artifacts = {"training_data": artifact}
+        mock_task.get_task.return_value = task
+
+        result = await clearml_mcp.download_artifact.fn("task_123", "training_data")
+
+        assert "Failed to download artifact" in result["error"]
+
+
 class TestModelOperations:
     """Test model-related functions."""
 
