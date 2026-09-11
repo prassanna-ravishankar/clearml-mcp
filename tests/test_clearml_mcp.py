@@ -3,6 +3,8 @@
 from unittest.mock import Mock, patch
 
 import pytest
+from clearml import Model as SDKModel
+from clearml.binding.artifacts import Artifact as SDKArtifact
 
 from clearml_mcp import clearml_mcp
 
@@ -388,43 +390,55 @@ class TestTaskMetrics:
 class TestTaskArtifacts:
     """Test task artifact retrieval behavior."""
 
+    def test_sdk_artifact_contract(self):
+        """Regression: Artifact exposes url/size/hash - never uri or content_type.
+
+        The SDK keeps the content type private (``_content_type``) and has no
+        ``uri`` at all, so reading either raised AttributeError and the broad
+        handler turned it into a blanket "Failed to get task artifacts" for every
+        task that had artifacts. Bare Mocks auto-create attributes, so only a
+        spec'd mock or a check against the real class catches this.
+        """
+        for present in ("url", "size", "hash", "type", "mode", "timestamp"):
+            assert hasattr(SDKArtifact, present)
+        for absent in ("uri", "content_type"):
+            assert not hasattr(SDKArtifact, absent)
+
     @pytest.mark.asyncio
     @patch("clearml_mcp.clearml_mcp.Task")
     async def test_returns_artifact_information(self, mock_task):
         """get_task_artifacts returns artifact details correctly."""
-        # Arrange
-        artifact1 = Mock()
+        # Arrange: spec'd mocks reject attributes the real Artifact lacks.
+        artifact1 = Mock(spec=SDKArtifact)
         artifact1.type = "model"
         artifact1.mode = "output"
-        artifact1.uri = "s3://bucket/model.pkl"
-        artifact1.content_type = "application/octet-stream"
+        artifact1.url = "s3://bucket/model.pkl"
+        artifact1.size = 2048
+        artifact1.hash = "sha256:abc"
         artifact1.timestamp = "2024-01-01T00:00:00Z"
 
-        artifact2 = Mock()
+        artifact2 = Mock(spec=SDKArtifact)
         artifact2.type = "data"
         artifact2.mode = "input"
-        artifact2.uri = "file://data/train.csv"
-        artifact2.content_type = "text/csv"
-
-        # Mock hasattr to control which attributes are available
-        def mock_hasattr(obj, attr):
-            if obj is artifact2 and attr == "timestamp":
-                return False
-            return True
+        artifact2.url = "file://data/train.csv"
+        artifact2.size = 128
+        artifact2.hash = "sha256:def"
+        del artifact2.timestamp
 
         task = Mock()
         task.artifacts = {"model": artifact1, "dataset": artifact2}
 
         mock_task.get_task.return_value = task
 
-        with patch("builtins.hasattr", side_effect=mock_hasattr):
-            result = await clearml_mcp.get_task_artifacts.fn("task_123")
+        result = await clearml_mcp.get_task_artifacts.fn("task_123")
 
         # Assert
         assert "model" in result
         assert "dataset" in result
         assert result["model"]["type"] == "model"
-        assert result["model"]["uri"] == "s3://bucket/model.pkl"
+        assert result["model"]["url"] == "s3://bucket/model.pkl"
+        assert result["model"]["size"] == 2048
+        assert result["model"]["hash"] == "sha256:abc"
         assert result["dataset"]["type"] == "data"
         assert result["dataset"]["timestamp"] is None
 
@@ -517,26 +531,30 @@ class TestModelOperations:
         assert "error" in result
         assert "Failed to get model info" in result["error"]
 
+    def test_sdk_model_contract(self):
+        """Regression: Model exposes url - never uri, and has no created field."""
+        assert hasattr(SDKModel, "url")
+        for absent in ("uri", "created"):
+            assert not hasattr(SDKModel, absent)
+
     @pytest.mark.asyncio
     @patch("clearml_mcp.clearml_mcp.Model")
     async def test_list_models_returns_model_list(self, mock_model):
         """list_models returns list of available models."""
         # Arrange
-        model1 = Mock()
+        model1 = Mock(spec=SDKModel)
         model1.id = "model_1"
         model1.name = "Model 1"
         model1.project = "Project A"
         model1.framework = "pytorch"
-        model1.created = "2024-01-01T00:00:00Z"
         model1.tags = ["production", "v1.0"]
         model1.task = "task_123"
 
-        model2 = Mock()
+        model2 = Mock(spec=SDKModel)
         model2.id = "model_2"
         model2.name = "Model 2"
         model2.project = "Project B"
         model2.framework = "tensorflow"
-        model2.created = "2024-01-02T00:00:00Z"
         model2.tags = None
         model2.task = "task_456"
 
@@ -579,19 +597,17 @@ class TestModelOperations:
     async def test_get_model_artifacts_returns_artifact_details(self, mock_task):
         """get_model_artifacts returns model artifact information."""
         # Arrange
-        input_model = Mock()
+        input_model = Mock(spec=SDKModel)
         input_model.id = "input_1"
         input_model.name = "base_model"
         input_model.url = "https://models.clearml.io/base.pkl"
         input_model.framework = "pytorch"
-        input_model.uri = "s3://bucket/base.pkl"
 
-        output_model = Mock()
+        output_model = Mock(spec=SDKModel)
         output_model.id = "output_1"
         output_model.name = "fine_tuned_model"
         output_model.url = "https://models.clearml.io/finetuned.pkl"
         output_model.framework = "pytorch"
-        output_model.uri = "s3://bucket/finetuned.pkl"
 
         task = Mock()
         task.models = {
@@ -609,8 +625,8 @@ class TestModelOperations:
         assert "output_models" in result
         assert len(result["input_models"]) == 1
         assert len(result["output_models"]) == 1
-        assert result["input_models"][0]["uri"] == "s3://bucket/base.pkl"
-        assert result["output_models"][0]["uri"] == "s3://bucket/finetuned.pkl"
+        assert result["input_models"][0]["url"] == "https://models.clearml.io/base.pkl"
+        assert result["output_models"][0]["url"] == "https://models.clearml.io/finetuned.pkl"
 
     @pytest.mark.asyncio
     @patch("clearml_mcp.clearml_mcp.Task")
