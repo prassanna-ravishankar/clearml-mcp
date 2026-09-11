@@ -1,5 +1,7 @@
 """Behavioral tests for ClearML MCP server."""
 
+import os
+from pathlib import Path
 from unittest.mock import Mock, patch
 
 import pytest
@@ -34,6 +36,48 @@ def _fake_project(project_id, name):
     proj.id = project_id
     proj.name = name
     return proj
+
+
+class TestConfigFileResolution:
+    """Test which ClearML credentials file the server pins itself to."""
+
+    @staticmethod
+    def _resolve_with_home(monkeypatch, home) -> str | None:
+        """Run the resolver against a fake home directory and report the result."""
+        monkeypatch.delenv("CLEARML_CONFIG_FILE", raising=False)
+        monkeypatch.setattr(Path, "home", lambda: home)
+        clearml_mcp._resolve_clearml_config_file()  # noqa: SLF001
+        return os.environ.get("CLEARML_CONFIG_FILE")
+
+    def test_prefers_clearml_directory_config(self, tmp_path, monkeypatch):
+        """~/.clearml/clearml.conf is used when present."""
+        preferred = tmp_path / ".clearml" / "clearml.conf"
+        preferred.parent.mkdir()
+        preferred.write_text("[api]\n", encoding="utf-8")
+        (tmp_path / "clearml.conf").write_text("[api]\n", encoding="utf-8")
+
+        assert self._resolve_with_home(monkeypatch, tmp_path) == str(preferred)
+
+    def test_falls_back_to_home_directory_config(self, tmp_path, monkeypatch):
+        """A config at ~/clearml.conf is honoured, which some SDK versions ignore."""
+        fallback = tmp_path / "clearml.conf"
+        fallback.write_text("[api]\n", encoding="utf-8")
+
+        assert self._resolve_with_home(monkeypatch, tmp_path) == str(fallback)
+
+    def test_leaves_environment_alone_when_no_config_exists(self, tmp_path, monkeypatch):
+        """With no credentials file, the SDK's own defaults are left to apply."""
+        assert self._resolve_with_home(monkeypatch, tmp_path) is None
+
+    def test_explicit_environment_variable_wins(self, tmp_path, monkeypatch):
+        """An operator-set CLEARML_CONFIG_FILE is never overwritten."""
+        (tmp_path / "clearml.conf").write_text("[api]\n", encoding="utf-8")
+        monkeypatch.setenv("CLEARML_CONFIG_FILE", "/etc/clearml/custom.conf")
+        monkeypatch.setattr(Path, "home", lambda: tmp_path)
+
+        clearml_mcp._resolve_clearml_config_file()  # noqa: SLF001
+
+        assert os.environ["CLEARML_CONFIG_FILE"] == "/etc/clearml/custom.conf"
 
 
 class TestClearMLConnection:

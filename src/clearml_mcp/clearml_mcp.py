@@ -1,10 +1,35 @@
 """ClearML MCP Server implementation."""
 
+import os
 import re
+from pathlib import Path
 from typing import Any, cast
 
-from clearml import Model, Task
-from fastmcp import FastMCP
+
+def _resolve_clearml_config_file() -> None:
+    """Pin ``CLEARML_CONFIG_FILE`` to the first known credentials file that exists.
+
+    The SDK's own default search path varies by version: a config written to
+    ``~/clearml.conf`` is found by some releases and silently ignored by others,
+    which surfaces as "No ClearML projects accessible" against a perfectly valid
+    config. Resolving it here makes the server behave the same on every version.
+    An explicit ``CLEARML_CONFIG_FILE`` in the environment always wins.
+    """
+    if os.environ.get("CLEARML_CONFIG_FILE"):
+        return
+    home = Path.home()
+    for candidate in (home / ".clearml" / "clearml.conf", home / "clearml.conf"):
+        if candidate.is_file():
+            os.environ["CLEARML_CONFIG_FILE"] = str(candidate)
+            return
+
+
+# Must run before ``clearml`` is imported: some SDK versions resolve configuration
+# at import time, after which setting the variable has no effect.
+_resolve_clearml_config_file()
+
+from clearml import Model, Task  # noqa: E402
+from fastmcp import FastMCP  # noqa: E402
 
 mcp = FastMCP("clearml-mcp")
 
