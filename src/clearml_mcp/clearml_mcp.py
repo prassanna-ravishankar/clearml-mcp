@@ -180,7 +180,13 @@ async def get_task_metrics(task_id: str) -> dict[str, Any]:
 
 @mcp.tool()
 async def get_task_artifacts(task_id: str) -> dict[str, Any]:
-    """Get task artifacts and outputs."""
+    """Get task artifacts and outputs.
+
+    Only reads attributes the SDK's ``Artifact`` actually exposes (``url``,
+    ``size``, ``hash``, ``type``, ``mode``, ``timestamp``); there is no public
+    ``uri`` or ``content_type``, and touching one raises ``AttributeError`` that
+    the broad handler below would turn into a blanket failure for the whole task.
+    """
     try:
         task = Task.get_task(task_id=task_id)
         artifacts = task.artifacts
@@ -190,8 +196,9 @@ async def get_task_artifacts(task_id: str) -> dict[str, Any]:
             artifact_dict[key] = {
                 "type": artifact.type,
                 "mode": artifact.mode,
-                "uri": artifact.uri,
-                "content_type": artifact.content_type,
+                "url": artifact.url,
+                "size": artifact.size,
+                "hash": artifact.hash,
                 "timestamp": str(artifact.timestamp) if hasattr(artifact, "timestamp") else None,
             }
         return artifact_dict
@@ -246,7 +253,6 @@ async def list_models(project_name: str | None = None) -> list[dict[str, Any]]:
                 "name": model.name,
                 "project": model.project,
                 "framework": model.framework,
-                "created": str(model.created),
                 "tags": list(model.tags) if model.tags else [],
                 "task_id": model.task,
             }
@@ -273,7 +279,6 @@ async def get_model_artifacts(task_id: str) -> dict[str, Any]:
                         "name": model.name,
                         "url": model.url,
                         "framework": model.framework,
-                        "uri": model.uri,
                     },
                 )
 
@@ -285,7 +290,6 @@ async def get_model_artifacts(task_id: str) -> dict[str, Any]:
                         "name": model.name,
                         "url": model.url,
                         "framework": model.framework,
-                        "uri": model.uri,
                     },
                 )
 
