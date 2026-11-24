@@ -168,13 +168,15 @@ For any MCP-compatible AI assistant, use this configuration:
 
 ## 🛠️ Available Tools
 
-The ClearML MCP server provides **14 comprehensive tools** for ML experiment analysis:
+The ClearML MCP server provides **16 comprehensive tools** for ML experiment analysis:
 
 ### 📊 Task Operations
 - `get_task_info` - Get detailed task information, parameters, and status
 - `list_tasks` - List tasks with advanced filtering (project, status, tags, user)
 - `get_task_parameters` - Retrieve hyperparameters and configuration
 - `get_task_metrics` - Access training metrics, scalars, and plots
+- `list_plot_metrics` - List a task's plot metric/variant names, without payload
+- `get_task_plots` - Get PR curves, histograms and confusion matrices (filterable, spillable to disk)
 - `get_task_artifacts` - Get artifacts, model files, and outputs
 
 ### 🤖 Model Operations
